@@ -1,0 +1,5 @@
+# Assessing the best practice for surrogate variable analysis in epigenome-wide association studies
+
+Epigenome-wide association studies (EWAS) examine the association between differences in DNA methylation and a trait of interest. High-throughput experiments are required to measure DNA methylation across thousands or millions of CpG sites in large cohorts. These experiments generate unwanted variation in DNA methylation that is related not to the trait of interest being measured, but instead some batch variable. In order to counteract these batch effects and potentially other unwanted variation, surrogate variables (SVs) can be added as covariates in an EWAS. 
+
+Surrogate variable analysis (SVA) is the process of generating these SVs
