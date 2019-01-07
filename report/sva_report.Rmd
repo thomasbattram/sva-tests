@@ -11,11 +11,17 @@ opts_chunk$set(echo = FALSE,
 ```
 
 ```{r call_source}
-read_chunk("~/PACE/pace_ad/reports/pace_ad_report.r")
+read_chunk("~/sva_tests/report/sva_report.R")
 ```
 
 ``` {r load_data, results = "hide", message = FALSE, warning = FALSE}
 ```
+
+```{r timings_setup, results = "hide", message = FALSE, warning = FALSE}
+```  
+
+```{r ncpg_setup, results = "hide", message = FALSE, warning = FALSE}
+```  
 
 ## Aim:
 To test the length of time taken to generate surrogate variables (SVs) using various different parameters and compare the SVs generated
@@ -53,10 +59,26 @@ where _SVi_ is the ith SV generated using all CpGs from the 450k array.
 For the number of SVs and the number of samples we just assessed run time...
 __Assess something else as well as run time for number of SVs???__ 
 
-
 ## Results
 
 ### Timings
+
+```{r time_plot, results = "asis", message = FALSE, echo = FALSE, warning = FALSE, fig.cap =time_plot_cap}
+```
+
+```{r time_table, results = "asis", message = FALSE, echo = FALSE, warning = FALSE, fig.cap = time_table_cap}
+```
+
+### Smart vs normal sva
+```{r sva_vs_smart_sva_table, results = "asis", message = FALSE, echo = FALSE, warning = FALSE, fig.cap = smart_v_normal_cap}
+```
+
+### Effectiveness of subseting CpGs
+```{r mv_vs_random_plot, results = "asis", message = FALSE, echo = FALSE, warning = FALSE, fig.cap = mv_vs_random_plot_cap}
+```
+
+```{r ncpg_plot, results = "asis", message = FALSE, echo = FALSE, warning = FALSE, fig.cap = ncpg_plot_cap}
+```
 
 
 

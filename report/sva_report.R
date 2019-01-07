@@ -2,24 +2,30 @@
 
 rm(list = ls())
 
-pkgs <- c("tidyverse")
+pkgs <- c("tidyverse", "knitr", "captioner", "pander")
 lapply(pkgs, require, character.only = TRUE)
+
+devtools::load_all("~/repos/usefunc")
 
 # NEED TO SAVE MORE ANALYSIS RESULTS!!!!
 
 # params tables
-params <- read_delim("~/main_project/ALSPAC_EWAS/sva_tests/sv_test_params_sims.txt", delim = "\t")
+params <- read_delim("~/sva_tests/results/sv_test_params_sims.txt", delim = "\t")
 
 # sva vs smart sva
-smart_v_normal <- read_delim("~/main_project/ALSPAC_EWAS/sva_tests/smartsva_v_sva_sims.txt", delim = "\t")
-smart_v_normal_mv <- read_delim("~/main_project/ALSPAC_EWAS/sva_tests/smartsva_v_sva_simsmost_var.txt", delim = "\t")
+smart_v_normal <- read_delim("~/sva_tests/results/smartsva_v_sva_sims.txt", delim = "\t")
+smart_v_normal_mv <- read_delim("~/sva_tests/results/smartsva_v_sva_simsmost_var.txt", delim = "\t")
 
 # ncpg with 20 svs
-ncpg_dat_20 <- read_delim("~/main_project/ALSPAC_EWAS/sva_tests/ncpg_comp_sims.txt", delim = "\t")
-ncpg_dat_20_mv <-read_delim("~/main_project/ALSPAC_EWAS/sva_tests/ncpg_comp_simsmost_var.txt", delim = "\t")
+ncpg_dat_20 <- read_delim("~/sva_tests/results/ncpg_comp_sims.txt", delim = "\t")
+ncpg_dat_20_mv <-read_delim("~/sva_tests/results/ncpg_comp_simsmost_var.txt", delim = "\t")
 
 # ncpg with 10 svs
-ncpg_dat_10 <- read_delim("~/main_project/ALSPAC_EWAS/sva_tests/ncpg_comp_10_sims.txt", delim = "\t")
+ncpg_dat_10 <- read_delim("~/sva_tests/results/ncpg_comp_10_sims.txt", delim = "\t")
+
+# Captioner setup
+table_nums <- captioner(prefix = "Table")
+fig_nums <- captioner()
 
 ## ---- timings_setup -----------------------------------
 cont_params <- params %>%
@@ -30,8 +36,86 @@ time_plot <- ggplot(cont_params, aes(x = n_cpg, y = time_user, colour = as.facto
 	geom_point() +
 	scale_colour_discrete(name = "n_sample")
 
+fig_nums(name = "time_plot", caption = "How does time taken to perform SVA vary with sample number, SVA package and CpG number?")
+time_plot_cap <- fig_nums("time_plot")
+
+# parameters for:
+# - sv_type -- keep smartsva
+# - n_cpg -- keep 450k
+# - dat_type -- keep continuous
+# - n_sample -- keep max sample size
+
+n_cpg_times <- cont_params %>%
+	dplyr::filter(sv_type == "smartsva") %>%
+	dplyr::filter(n_sample == max(n_sample))
+
+sv_type_times <- cont_params %>%
+	dplyr::filter(n_cpg == max(n_cpg)) %>%
+	dplyr::filter(n_sample == max(n_sample))
+
+n_sample_times <- cont_params %>%
+	dplyr::filter(n_cpg == max(n_cpg)) %>%
+	dplyr::filter(sv_type == "smartsva")
+
+time_table <- do.call("rbind", list(n_cpg_times, sv_type_times, n_sample_times))
+
+table_nums(name = "time_table", caption = "How does time taken to perform SVA vary with sample number, SVA package and CpG number?")
+time_table_cap <- table_nums("time_table")
+
+table_nums(name = "smart_v_normal", caption = "What is the correlation between SVs generated using the two different packages?")
+smart_v_normal_cap <- table_nums("smart_v_normal")
+
 ## ---- time_plot -----------------------------------
 print(time_plot)
 
-## ---- sva_vs_smart_sva_setup -----------------------------------
+## ---- time_table -----------------------------------
+pander(time_table)
+
+## ---- sva_vs_smart_sva_table -----------------------------------
+pander(smart_v_normal)
+
+## ---- ncpg_setup -----------------------------------
+
+oldnames <- colnames(ncpg_dat_20_mv)[-1]
+newnames <- paste0(colnames(ncpg_dat_20_mv)[-1], "_mv")
+colnames(ncpg_dat_20)[-1] <- paste0(colnames(ncpg_dat_20)[-1], "_random")
+
+plot_res <- ncpg_dat_20_mv %>%
+	rename_at(vars(oldnames), ~ newnames) %>%
+	left_join(ncpg_dat_20) %>%
+	gather(key = sv, value = adj_r2, -n_cpg) %>%
+	mutate(sv = gsub("_adjr2", "", sv)) %>%
+	mutate(sv = gsub("sv", "", sv)) %>%
+	separate(sv, c("sv", "selection"), "_")
+
+mv_vs_random_plot_res <- plot_res %>%
+	dplyr::filter(n_cpg == 20000) 
+
+mv_vs_random_plot <- ggplot(mv_vs_random_plot_res, aes(x = reorder(as.numeric(sv), sort(as.numeric(sv))), y = adj_r2, colour = selection)) +
+	geom_point() +
+	geom_line(aes(group = selection)) +
+	labs(x = "SV (created using all 450k CpGs)", y = bquote("Variance explained by all SVs created from a subset of CpGs (adj" ~r^2~ ")")) +
+	scale_colour_discrete(name = "", 
+						  breaks = c("random", "mv"), 
+						  labels = c("random", "most variable"))
+
+
+fig_nums(name = "mv_vs_random_plot", caption = "Is it better to subset the number of CpGs randomly or by most variable CpGs when running SVA?")
+mv_vs_random_plot_cap <- fig_nums("mv_vs_random_plot")
+
+ncpg_plot <- ggplot(subset(plot_res, selection == "random"), aes(x = n_cpg, y = adj_r2, colour = reorder(as.numeric(sv), sort(as.numeric(sv))))) +
+	geom_line() +
+	geom_point() +
+	scale_colour_discrete(name = "SV")
+
+fig_nums(name = "ncpg_plot", caption = "Variance captured of SVs made using 450k CpGs compared to random subsets")
+ncpg_plot_cap <- fig_nums("ncpg_plot")
+
+## ---- mv_vs_random -----------------------------------
+print(mv_vs_random_plot)
+
+## ---- ncpg_plot -----------------------------------
+print(ncpg_plot)
+
+
 
