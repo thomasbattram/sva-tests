@@ -53,7 +53,7 @@ __Assess something else as well as run time for number of SVs???__
 
 ### Timings
 
-<img src="figure/time_plot-1.png" title="Figure 1: How does time taken to perform SVA vary with sample number, SVA package and CpG number?" alt="Figure 1: How does time taken to perform SVA vary with sample number, SVA package and CpG number?" style="display: block; margin: auto;" />
+![Figure 1: How does time taken to perform SVA vary with sample number, SVA package and CpG number?](figure/time_plot-1.png)
 
 
 ----------------------------------------------------------------------------
@@ -224,7 +224,7 @@ Table: Table continues below
 ### Effectiveness of subseting CpGs
 
 
-<img src="figure/ncpg_plot-1.png" title="Figure 3: Variance captured of SVs made using 450k CpGs compared to random subsets" alt="Figure 3: Variance captured of SVs made using 450k CpGs compared to random subsets" style="display: block; margin: auto;" />
+![Figure 3: Variance captured of SVs made using 450k CpGs compared to random subsets](figure/ncpg_plot-1.png)
 
 
 
