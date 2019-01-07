@@ -43,7 +43,7 @@ if (most_var) {
 	mnam <- ""
 }
 
-file <- paste0("~/main_project/ALSPAC_EWAS/sva_tests/sv_test_sims", mnam, ".RData")
+file <- paste0("data/sv_test_sims", mnam, ".RData")
 
 if (file.exists(file)) {
 	load(file)
@@ -129,9 +129,9 @@ for (i in 1:nrow(params)) {
 	params[i, "time_elapsed"] <- tim[3]
 }
 
-write.table(params, file = paste0("~/main_project/ALSPAC_EWAS/sva_tests/sv_test_params_sims", mnam, ".txt"), quote = F, col.names = T, row.names = F, sep = "\t")
+write.table(params, file = paste0("results/sv_test_params_sims", mnam, ".txt"), quote = F, col.names = T, row.names = F, sep = "\t")
 
-save(params, sv_list, file = paste0("~/main_project/ALSPAC_EWAS/sva_tests/sv_test_sims", mnam, ".RData"))
+save(params, sv_list, file = paste0("data/sv_test_sims", mnam, ".RData"))
 
 print("FIN")
 
@@ -180,7 +180,7 @@ for (j in 1:nrow(smart_v_normal)) {
 	smart_v_normal[j, 3] <- summary(fit)$adj.r.squared
 }
 
-write.table(smart_v_normal, file = paste0("~/main_project/ALSPAC_EWAS/sva_tests/smartsva_v_sva_sims", mnam, ".txt"), quote = F, row.names = F, col.names = T, sep = "\t")
+write.table(smart_v_normal, file = paste0("results/smartsva_v_sva_sims", mnam, ".txt"), quote = F, row.names = F, col.names = T, sep = "\t")
 
 # 450k vs lower 
 sv_ncpg_params <- with(params, which(dat_type == "continuous" 
@@ -216,7 +216,7 @@ ncpg_plot <- ggplot(plot_res, aes(x = n_cpg, y = adj_r2, colour = reorder(sv, so
 	geom_point() +
 	scale_colour_discrete(name = "SV")
 
-write.table(ncpg_dat, file = paste0("~/main_project/ALSPAC_EWAS/sva_tests/ncpg_comp_sims", mnam, ".txt"), quote = F, row.names = F, col.names = T, sep = "\t")
+write.table(ncpg_dat, file = paste0("results/ncpg_comp_sims", mnam, ".txt"), quote = F, row.names = F, col.names = T, sep = "\t")
 
 # Using 10 SVs, 450k vs lower 
 sv_ncpg_params <- with(params, which(dat_type == "continuous" 
@@ -252,7 +252,7 @@ ncpg_plot_10svs <- ggplot(plot_res, aes(x = n_cpg, y = adj_r2, colour = reorder(
 	geom_point() +
 	scale_colour_discrete(name = "SV")
 
-write.table(ncpg_dat, file = paste0("~/main_project/ALSPAC_EWAS/sva_tests/ncpg_comp_sims", mnam, ".txt"), quote = F, row.names = F, col.names = T, sep = "\t")
+write.table(ncpg_dat, file = paste0("results/ncpg_comp_sims", mnam, ".txt"), quote = F, row.names = F, col.names = T, sep = "\t")
 
 
 # continuous vs binary
@@ -269,7 +269,7 @@ sv_nsamp_params <- with(params, which(dat_type == "continuous"
 params[sv_nsamp_params,]
 
 # final plots to summarise it! 
-pdf(paste0("~/main_project/ALSPAC_EWAS/sva_tests/sv_plots", mnam, ".pdf"))
+pdf(paste0("results/sv_plots", mnam, ".pdf"))
 marrangeGrob(list(time_plot, ncpg_plot, ncpg_plot_10svs), ncol = 1, nrow = 1)
 dev.off()
 
