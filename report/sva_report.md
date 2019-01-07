@@ -222,7 +222,7 @@ Table: Table continues below
 -------------------
 
 ### Effectiveness of subseting CpGs
-
+![Figure 2: Is it better to subset the number of CpGs randomly or by most variable CpGs when running SVA?](figure/mv_vs_random-1.png)
 
 ![Figure 3: Variance captured of SVs made using 450k CpGs compared to random subsets](figure/ncpg_plot-1.png)
 
