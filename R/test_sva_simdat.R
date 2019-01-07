@@ -11,16 +11,23 @@ devtools::load_all("~/repos/usefunc")
 
 args <- commandArgs(trailingOnly = TRUE)
 most_var <- as.logical(args[1])
+ms_dir <- args[2]
+wd <- args[3]
+
+# ms_dir <- "/panfs/panasas01/sscm/ms13525/aries-release-v4/data/"
+# wd <- "~/sva_tests/"
+
+setwd(wd)
 
 TP <- "FOM"
 
 #load the samplesheet
-load("/panfs/panasas01/sscm/ms13525/aries-release-v4/data/samplesheet/data.Robj") 
+load(paste0(ms_dir, "samplesheet/data.Robj"))
 samplesheet <- dplyr::filter(samplesheet, time_point == TP) %>%
 	dplyr::filter(is.na(duplicate.rm))
 
 #load the methylation data
-load("/panfs/panasas01/sscm/ms13525/aries-release-v4/data/betas/data.Robj")
+load(paste0(ms_dir, "betas/data.Robj"))
 meth <- beta[, samplesheet$Sample_Name] #keep the samples that correspond to the time point you're interested in
 rm(beta)
 dim(meth)
@@ -28,6 +35,20 @@ dim(meth)
 mdata <- as.matrix(meth)
 mdata <- mdata[complete.cases(mdata), ]
 dim(mdata)
+
+# load in the old data if there 
+if (most_var) {
+	mnam <- "most_var"
+} else {
+	mnam <- ""
+}
+
+file <- paste0("~/main_project/ALSPAC_EWAS/sva_tests/sv_test_sims", mnam, ".RData")
+
+if (file.exists(file)) {
+	load(file)
+	params_2 <- params
+}
 
 # ---------------------------------------------------------------
 # set up parameters to be tested
@@ -47,12 +68,26 @@ table(bin)
 cont <- rnorm(ncol(mdata))
 phen <- data.frame(binary = bin, continuous = cont)
 
+if (exists("params_2")) {
+	temp <- params %>%
+		dplyr::select(-time_user, -time_system, -time_elapsed) %>%
+		left_join(params_2) %>%
+		arrange(time_user) # arranges it so that the NAs are at the bottom - good for sv_list later
+	
+	params <- temp
+} else {
+	sv_list <- list()
+}
+
 # ---------------------------------------------------------------
 # run analyses
 # ---------------------------------------------------------------
-sv_list <- list()
+
 for (i in 1:nrow(params)) {
 	print(i)
+	if (!is.na(params[i, "time_user"])) {
+		next
+	}
 	nsv <- params[i, "n_sv"]
 	svtype <- params[i, "sv_type"]
 	ncpg <- params[i, "n_cpg"]
@@ -94,12 +129,6 @@ for (i in 1:nrow(params)) {
 	params[i, "time_elapsed"] <- tim[3]
 }
 
-if (most_var) {
-	mnam <- "most_var"
-} else {
-	mnam <- ""
-}
-
 write.table(params, file = paste0("~/main_project/ALSPAC_EWAS/sva_tests/sv_test_params_sims", mnam, ".txt"), quote = F, col.names = T, row.names = F, sep = "\t")
 
 save(params, sv_list, file = paste0("~/main_project/ALSPAC_EWAS/sva_tests/sv_test_sims", mnam, ".RData"))
@@ -109,7 +138,6 @@ print("FIN")
 # ---------------------------------------------------------------
 # Check timings of the results
 # ---------------------------------------------------------------
-load(paste0("~/main_project/ALSPAC_EWAS/sva_tests/sv_test_sims", mnam, ".RData"))
 
 # graph it!!!
 
