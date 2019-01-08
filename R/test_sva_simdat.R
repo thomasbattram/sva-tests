@@ -53,7 +53,7 @@ if (file.exists(file)) {
 # ---------------------------------------------------------------
 # set up parameters to be tested
 # ---------------------------------------------------------------
-n_sv <- 20
+n_sv <- seq(5, 20, 5)
 sv_type <- c("sva", "smartsva")
 n_cpg <- c(seq(20000, 300000, 20000), nrow(mdata))
 n_samp <- c(seq(100, ncol(mdata), by = 100))
@@ -121,12 +121,14 @@ for (i in 1:nrow(params)) {
 		svobj <- smartsva.cpp(mdat, mod, mod0=NULL, n.sv = nsv, B = 5)
 	}
 
-	sv_list[[paste0("p", i)]] <- svobj
-	
 	tim <- proc.time() - ptm
 	params[i, "time_user"] <- tim[1]
 	params[i, "time_system"] <- tim[2]
 	params[i, "time_elapsed"] <- tim[3]
+
+	if (nsv != 20) next
+	sv_list[[paste0("p", i)]] <- svobj
+
 }
 
 write.table(params, file = paste0("results/sv_test_params_sims", mnam, ".txt"), quote = F, col.names = T, row.names = F, sep = "\t")
