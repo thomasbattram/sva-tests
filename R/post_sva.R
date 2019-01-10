@@ -16,6 +16,9 @@ wd <- args[2]
 
 setwd(wd)
 
+file <- paste0("data/sv_test_sims", mnam, ".RData")
+load(file)
+
 # ---------------------------------------------------------------
 # Check timings of the results
 # ---------------------------------------------------------------
@@ -28,6 +31,11 @@ time_plot <- ggplot(cont_params, aes(x = n_cpg, y = time_user, colour = as.facto
 	geom_line(aes(linetype = sv_type)) +
 	geom_point() +
 	scale_colour_discrete(name = "n_sample")
+
+# look at data type (binary or continuous)
+bin <- params[params$dat_type == "binary", "time_user"]
+cont <- params[params$dat_type == "continuous", "time_user"]
+cor(bin, cont) # 0.9982354
 
 # ---------------------------------------------------------------
 # Test the differences in SVs generated
@@ -131,7 +139,7 @@ ncpg_plot_10svs <- ggplot(plot_res, aes(x = n_cpg, y = adj_r2, colour = reorder(
 	geom_point() +
 	scale_colour_discrete(name = "SV")
 
-write.table(ncpg_dat, file = paste0("results/ncpg_comp_sims", mnam, ".txt"), quote = F, row.names = F, col.names = T, sep = "\t")
+write.table(ncpg_dat, file = paste0("results/ncpg_comp_10_sims", mnam, ".txt"), quote = F, row.names = F, col.names = T, sep = "\t")
 
 
 # continuous vs binary
