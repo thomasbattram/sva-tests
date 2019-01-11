@@ -126,14 +126,16 @@ for (i in 1:nrow(params)) {
 	params[i, "time_system"] <- tim[2]
 	params[i, "time_elapsed"] <- tim[3]
 
-	if (nsv != 20) next
-	sv_list[[paste0("p", i)]] <- svobj
-
+	if (nsv == 20) {
+		next
+	} else {
+		sv_list[[paste0("p", i)]] <- svobj	
+	}
 }
 
 write.table(params, file = paste0("results/sv_test_params_sims", mnam, ".txt"), quote = F, col.names = T, row.names = F, sep = "\t")
 
-save(params, sv_list, file = paste0("data/sv_test_sims", mnam, ".RData"))
+save(sv_list, file = paste0("data/sv_test_sims", mnam, ".RData"))
 
 print("FIN")
 
