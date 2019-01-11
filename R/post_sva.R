@@ -13,29 +13,53 @@ most_var <- as.logical(args[1])
 wd <- args[2]
 
 # wd <- "~/sva_tests/"
+# most_var <- FALSE
 
 setwd(wd)
 
+if (most_var) {
+	mnam <- "most_var"
+} else {
+	mnam <- ""
+}
+
 file <- paste0("data/sv_test_sims", mnam, ".RData")
+params <- read_delim(paste0("results/sv_test_params_sims", mnam, ".txt"), delim = "\t")
 load(file)
+
+length(sv_list)
 
 # ---------------------------------------------------------------
 # Check timings of the results
 # ---------------------------------------------------------------
 # graph it!!!
 
-cont_params <- params %>%
-	dplyr::filter(dat_type == "continuous")
+all_sv_cont_params <- params %>%
+	dplyr::filter(dat_type == "continuous") %>% 
+	dplyr::filter(n_sv == max(n_sv))
 
-time_plot <- ggplot(cont_params, aes(x = n_cpg, y = time_user, colour = as.factor(n_sample))) +
+time_plot <- ggplot(all_samp_cont_params, aes(x = n_cpg, y = time_user, colour = as.factor(n_sample))) +
 	geom_line(aes(linetype = sv_type)) +
 	geom_point() +
 	scale_colour_discrete(name = "n_sample")
+
+sv_dat_type_params <- params %>%
+	dplyr::filter(n_sample == max(n_sample)) %>%
+	dplyr::filter(sv_type == "smartsva")
+
+sv_time_plot <- ggplot(sv_dat_type_params, aes(x = n_cpg, y = time_user, fill = as.factor(n_sv))) +
+	geom_bar(stat = "identity", position = "dodge") +
+	scale_fill_discrete(name = "n_sv")
+
+dat_type_time_plot <- ggplot(sv_dat_type_params, aes(x = n_cpg, y = time_user, fill = as.factor(dat_type))) +
+	geom_bar(stat = "identity", position = "dodge") +
+	scale_fill_discrete(name = "dat_type")
 
 # look at data type (binary or continuous)
 bin <- params[params$dat_type == "binary", "time_user"]
 cont <- params[params$dat_type == "continuous", "time_user"]
 cor(bin, cont) # 0.9982354
+
 
 # ---------------------------------------------------------------
 # Test the differences in SVs generated
@@ -157,6 +181,6 @@ params[sv_nsamp_params,]
 
 # final plots to summarise it! 
 pdf(paste0("results/sv_plots", mnam, ".pdf"))
-marrangeGrob(list(time_plot, ncpg_plot, ncpg_plot_10svs), ncol = 1, nrow = 1)
+marrangeGrob(list(time_plot, sv_time_plot, dat_type_time_plot, ncpg_plot, ncpg_plot_10svs), ncol = 1, nrow = 1)
 dev.off()
 
