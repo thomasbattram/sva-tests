@@ -218,6 +218,8 @@ ncpg_dat <- ncpg_dat %>%
 	dplyr::mutate(cpg_subset = "random") %>%
 	rbind(ncpg_dat_mv)
 
+write.table(ncpg_dat, "results/mv_v_rand_ncpg_comp_10_sims.txt", row.names = F, col.names = T, quote = F, sep = "\t")
+
 plot_res <- ncpg_dat %>%
 	gather(key = sv, value = adj_r2, -n_cpg, -cpg_subset)
 plot_res$sv <- gsub("_adjr2", "", plot_res$sv)
