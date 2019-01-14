@@ -126,7 +126,7 @@ for (i in 1:nrow(params)) {
 	params[i, "time_system"] <- tim[2]
 	params[i, "time_elapsed"] <- tim[3]
 
-	if (nsv == 20) {
+	if (nsv != max(params$n_sv) {
 		next
 	} else {
 		sv_list[[paste0("p", i)]] <- svobj	
