@@ -133,7 +133,7 @@ for (i in 1:nrow(params)) {
 	## sv_list names follow this order: DT_NSV_SVTYPE_NCPG_NSAMP
 	## --- need to shorted some of them
 		dt <- substr(dt, 1, 3)
-		ncpg <- paste0(ncpg/1000, "k")
+		ncpg <- paste0(round(ncpg/1000), "k")
 		nam <- paste(dt, nsv, svtype, ncpg, nsamp, sep = "_")
 		sv_list[[nam]] <- svobj	
 	}
