@@ -44,11 +44,26 @@ time_plot_cap <- fig_nums("time_plot")
 table_nums(name = "smart_v_normal", caption = "What is the correlation between SVs generated using the two different packages?")
 smart_v_normal_cap <- table_nums("smart_v_normal")
 
+sv_dat_type_params <- params %>%
+	dplyr::filter(n_sample == max(n_sample)) %>%
+	dplyr::filter(sv_type == "smartsva")
+
+sv_dat_type_plot <- ggplot(sv_dat_type_params, aes(x = n_cpg, y = time_user, colour = as.factor(n_sv))) +
+	geom_point() +
+	geom_line(aes(linetype = dat_type)) +
+	scale_colour_discrete(name = "n_sv")
+
+fig_nums(name = "time_plot2", caption = "How does time taken to perform SVA vary with number of SVs and distribution of data (continuous or binary)?")
+time_plot2_cap <- fig_nums("time_plot2")
+
 ## ---- time_plot -----------------------------------
 print(time_plot)
 
 ## ---- sva_vs_smart_sva_table -----------------------------------
 pander(smart_v_normal)
+
+## ---- time_plot2 -----------------------------------
+print(sv_dat_type_plot)
 
 ## ---- ncpg_setup -----------------------------------
 
