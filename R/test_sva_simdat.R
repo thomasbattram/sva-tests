@@ -83,7 +83,7 @@ if (exists("params_2")) {
 # ---------------------------------------------------------------
 # run analyses
 # ---------------------------------------------------------------
-
+i=1
 for (i in 1:nrow(params)) {
 	print(i)
 	if (!is.na(params[i, "time_user"])) {
@@ -130,7 +130,12 @@ for (i in 1:nrow(params)) {
 	if (nsv != max(params$n_sv) {
 		next
 	} else {
-		sv_list[[paste0("p", i)]] <- svobj	
+	## sv_list names follow this order: DT_NSV_SVTYPE_NCPG_NSAMP
+	## --- need to shorted some of them
+		dt <- substr(dt, 1, 3)
+		ncpg <- paste0(ncpg/1000, "k")
+		nam <- paste(dt, nsv, svtype, ncpg, nsamp, sep = "_")
+		sv_list[[nam]] <- svobj	
 	}
 }
 
