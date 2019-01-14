@@ -52,34 +52,31 @@ pander(smart_v_normal)
 
 ## ---- ncpg_setup -----------------------------------
 
-oldnames <- colnames(ncpg_dat_20_mv)[-1]
-newnames <- paste0(colnames(ncpg_dat_20_mv)[-1], "_mv")
-colnames(ncpg_dat_20)[-1] <- paste0(colnames(ncpg_dat_20)[-1], "_random")
-
-plot_res <- ncpg_dat_20_mv %>%
-	rename_at(vars(oldnames), ~ newnames) %>%
-	left_join(ncpg_dat_20) %>%
-	gather(key = sv, value = adj_r2, -n_cpg) %>%
-	mutate(sv = gsub("_adjr2", "", sv)) %>%
-	mutate(sv = gsub("sv", "", sv)) %>%
-	separate(sv, c("sv", "selection"), "_")
+plot_res <- mv_vs_rand %>%
+	gather(key = sv, value = adj_r2, -n_cpg, -cpg_subset)
+plot_res$sv <- gsub("_adjr2", "", plot_res$sv)
+plot_res$sv <- gsub("sv", "", plot_res$sv)
 
 mv_vs_random_plot_res <- plot_res %>%
 	dplyr::filter(n_cpg == 20000) 
 
-mv_vs_random_plot <- ggplot(mv_vs_random_plot_res, aes(x = reorder(as.numeric(sv), sort(as.numeric(sv))), y = adj_r2, colour = selection)) +
+mv_vs_random_plot <- ggplot(mv_vs_random_plot_res, aes(x = reorder(as.numeric(sv), sort(as.numeric(sv))), y = adj_r2, colour = cpg_subset)) +
 	geom_point() +
-	geom_line(aes(group = selection)) +
+	geom_line(aes(group = cpg_subset)) +
 	labs(x = "SV (created using all 450k CpGs)", y = bquote("Variance explained by all SVs created from a subset of CpGs (adj" ~r^2~ ")")) +
 	scale_colour_discrete(name = "", 
 						  breaks = c("random", "mv"), 
 						  labels = c("random", "most variable"))
 
-
 fig_nums(name = "mv_vs_random_plot", caption = "Is it better to subset the number of CpGs randomly or by most variable CpGs when running SVA?")
 mv_vs_random_plot_cap <- fig_nums("mv_vs_random_plot")
 
-ncpg_plot <- ggplot(subset(plot_res, selection == "random"), aes(x = n_cpg, y = adj_r2, colour = reorder(as.numeric(sv), sort(as.numeric(sv))))) +
+plot_res <- ncpg_dat_20 %>%
+	gather(key = sv, value = adj_r2, -n_cpg)
+plot_res$sv <- gsub("_adjr2", "", plot_res$sv)
+plot_res$sv <- gsub("sv", "", plot_res$sv)
+
+ncpg_plot <- ggplot(plot_res, aes(x = n_cpg, y = adj_r2, colour = reorder(as.numeric(sv), sort(as.numeric(sv))))) +
 	geom_line() +
 	geom_point() +
 	scale_colour_discrete(name = "SV")
