@@ -5,9 +5,6 @@
 
 
 
-```
-## Error: '~/sva_tests/results/ncpg_comp_10_sims.txt' does not exist.
-```
 
 
 
@@ -55,125 +52,7 @@ __Assess something else as well as run time for number of SVs???__
 
 ![Figure 1: How does time taken to perform SVA vary with sample number, SVA package and CpG number?](figure/time_plot-1.png)
 
-
-----------------------------------------------------------------------------
- n_sv   sv_type    n_cpg     dat_type    n_sample   time_user   time_system 
------- ---------- -------- ------------ ---------- ----------- -------------
-  20    smartsva   20000    continuous     900        17.6         0.344    
-
-  20    smartsva   40000    continuous     900        35.23        0.989    
-
-  20    smartsva   60000    continuous     900        54.27        10.61    
-
-  20    smartsva   80000    continuous     900        68.73        3.858    
-
-  20    smartsva   1e+05    continuous     900        89.61        8.477    
-
-  20    smartsva   120000   continuous     900        107.9        3.244    
-
-  20    smartsva   140000   continuous     900        128.6        2.868    
-
-  20    smartsva   160000   continuous     900        146.4        10.04    
-
-  20    smartsva   180000   continuous     900        163.3        15.7     
-
-  20    smartsva   2e+05    continuous     900        180.7        21.16    
-
-  20    smartsva   220000   continuous     900         195         15.25    
-
-  20    smartsva   240000   continuous     900        215.8        11.09    
-
-  20    smartsva   260000   continuous     900        234.9        18.59    
-
-  20    smartsva   280000   continuous     900         251         14.98    
-
-  20    smartsva   3e+05    continuous     900        265.6        21.71    
-
-  20    smartsva   483103   continuous     900         451         29.42    
-
-  20      sva      483103   continuous     900        1703         302.2    
-
-  20    smartsva   483103   continuous     900         451         29.42    
-
-  20    smartsva   483103   continuous     100        22.15        1.097    
-
-  20    smartsva   483103   continuous     200        42.66        1.985    
-
-  20    smartsva   483103   continuous     300        71.58        2.485    
-
-  20    smartsva   483103   continuous     400        109.5        6.403    
-
-  20    smartsva   483103   continuous     500        154.1        8.969    
-
-  20    smartsva   483103   continuous     600        213.8        13.71    
-
-  20    smartsva   483103   continuous     700        283.8        17.91    
-
-  20    smartsva   483103   continuous     800        352.8        65.24    
-
-  20    smartsva   483103   continuous     900         451         29.42    
-----------------------------------------------------------------------------
-
-Table: Table continues below
-
- 
---------------
- time_elapsed 
---------------
-    17.94     
-
-    36.21     
-
-    64.88     
-
-    72.58     
-
-    98.08     
-
-    111.2     
-
-    131.4     
-
-    156.4     
-
-     179      
-
-    201.9     
-
-    210.2     
-
-    226.9     
-
-    253.5     
-
-     266      
-
-    287.3     
-
-    480.3     
-
-    526.2     
-
-    480.3     
-
-    23.25     
-
-    44.64     
-
-    74.05     
-
-    115.9     
-
-     163      
-
-    227.5     
-
-    301.6     
-
-    418.2     
-
-    480.3     
---------------
+![Figure 2: How does time taken to perform SVA vary with number of SVs and distribution of data (continuous or binary)?](figure/time_plot2-1.png)
 
 ### Smart vs normal sva
 
@@ -222,9 +101,9 @@ Table: Table continues below
 -------------------
 
 ### Effectiveness of subseting CpGs
-![Figure 2: Is it better to subset the number of CpGs randomly or by most variable CpGs when running SVA?](figure/mv_vs_random-1.png)
+![Figure 3: Is it better to subset the number of CpGs randomly or by most variable CpGs when running SVA?](figure/mv_vs_random-1.png)
 
-![Figure 3: Variance captured of SVs made using 450k CpGs compared to random subsets](figure/ncpg_plot-1.png)
+![Figure 4: Variance captured of SVs made using 450k CpGs compared to random subsets](figure/ncpg_plot-1.png)
 
 
 
