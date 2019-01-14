@@ -47,6 +47,7 @@ file <- paste0("data/sv_test_sims", mnam, ".RData")
 
 if (file.exists(file)) {
 	load(file)
+	params <- read_delim(file = paste0("results/sv_test_params_sims", mnam, ".txt"), delim = "\t")
 	params_2 <- params
 }
 
