@@ -18,10 +18,12 @@ smart_v_normal_mv <- read_delim("~/sva_tests/results/smartsva_v_sva_simsmost_var
 
 # ncpg with 20 svs
 ncpg_dat_20 <- read_delim("~/sva_tests/results/ncpg_comp_sims.txt", delim = "\t")
-ncpg_dat_20_mv <-read_delim("~/sva_tests/results/ncpg_comp_simsmost_var.txt", delim = "\t")
 
 # ncpg with 10 svs
 ncpg_dat_10 <- read_delim("~/sva_tests/results/ncpg_comp_10_sims.txt", delim = "\t")
+
+# mv and rand ncpg dat 
+mv_vs_rand <- read_delim("~/sva_tests/results/mv_v_rand_ncpg_comp_10_sims.txt", delim = "\t")
 
 # Captioner setup
 table_nums <- captioner(prefix = "Table")
@@ -39,37 +41,11 @@ time_plot <- ggplot(cont_params, aes(x = n_cpg, y = time_user, colour = as.facto
 fig_nums(name = "time_plot", caption = "How does time taken to perform SVA vary with sample number, SVA package and CpG number?")
 time_plot_cap <- fig_nums("time_plot")
 
-# parameters for:
-# - sv_type -- keep smartsva
-# - n_cpg -- keep 450k
-# - dat_type -- keep continuous
-# - n_sample -- keep max sample size
-
-n_cpg_times <- cont_params %>%
-	dplyr::filter(sv_type == "smartsva") %>%
-	dplyr::filter(n_sample == max(n_sample))
-
-sv_type_times <- cont_params %>%
-	dplyr::filter(n_cpg == max(n_cpg)) %>%
-	dplyr::filter(n_sample == max(n_sample))
-
-n_sample_times <- cont_params %>%
-	dplyr::filter(n_cpg == max(n_cpg)) %>%
-	dplyr::filter(sv_type == "smartsva")
-
-time_table <- do.call("rbind", list(n_cpg_times, sv_type_times, n_sample_times))
-
-table_nums(name = "time_table", caption = "How does time taken to perform SVA vary with sample number, SVA package and CpG number?")
-time_table_cap <- table_nums("time_table")
-
 table_nums(name = "smart_v_normal", caption = "What is the correlation between SVs generated using the two different packages?")
 smart_v_normal_cap <- table_nums("smart_v_normal")
 
 ## ---- time_plot -----------------------------------
 print(time_plot)
-
-## ---- time_table -----------------------------------
-pander(time_table)
 
 ## ---- sva_vs_smart_sva_table -----------------------------------
 pander(smart_v_normal)
