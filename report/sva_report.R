@@ -75,12 +75,12 @@ plot_res$sv <- gsub("sv", "", plot_res$sv)
 mv_vs_random_plot_res <- plot_res %>%
 	dplyr::filter(n_cpg == 20000) 
 
-mv_vs_random_plot <- ggplot(mv_vs_random_plot_res, aes(x = reorder(as.numeric(sv), sort(as.numeric(sv))), y = adj_r2, colour = cpg_subset)) +
+mv_vs_random_plot <- ggplot(mv_vs_random_plot_res, aes(x = reorder(as.numeric(sv), sort(as.numeric(sv))), y = adj_r2, colour = as.factor(cpg_subset))) +
 	geom_point() +
 	geom_line(aes(group = cpg_subset)) +
 	labs(x = "SV (created using all 450k CpGs)", y = bquote("Variance explained by all SVs created from a subset of CpGs (adj" ~r^2~ ")")) +
 	scale_colour_discrete(name = "", 
-						  breaks = c("random", "mv"), 
+						  breaks = c("random", "most_variable"), 
 						  labels = c("random", "most variable"))
 
 fig_nums(name = "mv_vs_random_plot", caption = "Is it better to subset the number of CpGs randomly or by most variable CpGs when running SVA?")
@@ -96,7 +96,7 @@ ncpg_plot <- ggplot(plot_res, aes(x = n_cpg, y = adj_r2, colour = reorder(as.num
 	geom_point() +
 	scale_colour_discrete(name = "SV")
 
-fig_nums(name = "ncpg_plot", caption = "Variance captured of SVs made using 450k CpGs compared to random subsets")
+fig_nums(name = "ncpg_plot", caption = "Variance captured of SVs made using 450k CpGs by all SVs made using random subsets of varying numbers of CpGs")
 ncpg_plot_cap <- fig_nums("ncpg_plot")
 
 ## ---- mv_vs_random -----------------------------------
