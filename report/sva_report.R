@@ -31,7 +31,8 @@ fig_nums <- captioner()
 
 ## ---- timings_setup -----------------------------------
 cont_params <- params %>%
-	dplyr::filter(dat_type == "continuous")
+	dplyr::filter(dat_type == "continuous") %>%
+	dplyr::filter(n_sv == max(n_sv))
 
 time_plot <- ggplot(cont_params, aes(x = n_cpg, y = time_user, colour = as.factor(n_sample))) +
 	geom_line(aes(linetype = sv_type)) +
