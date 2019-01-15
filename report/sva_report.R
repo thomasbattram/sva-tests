@@ -42,6 +42,11 @@ time_plot <- ggplot(cont_params, aes(x = n_cpg, y = time_user, colour = as.facto
 fig_nums(name = "time_plot", caption = "How does time taken to perform SVA vary with sample number, SVA package and CpG number?")
 time_plot_cap <- fig_nums("time_plot")
 
+colnames(smart_v_normal) <- c("SV", "correlation", bquote("adjusted r"^"2"))
+
+smsva_times <- params[params$sv_type == "smartsva", "time_user", drop = T]
+sva_times <- params[params$sv_type == "sva", "time_user", drop = T]
+
 table_nums(name = "smart_v_normal", caption = "What is the correlation between SVs generated using the two different packages?")
 smart_v_normal_cap <- table_nums("smart_v_normal")
 
