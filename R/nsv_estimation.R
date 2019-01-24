@@ -19,21 +19,28 @@ TP <- "FOM"
 #load the samplesheet
 load(paste0(ms_dir, "samplesheet/data.Robj"))
 samplesheet <- dplyr::filter(samplesheet, time_point == TP) %>%
-	dplyr::filter(is.na(duplicate.rm))
+	dplyr::filter(is.na(duplicate.rm)) %>%
+	mutate(ALN = as.numeric(ALN))
+
+# sort the covariate date
+covars <- read_delim("~/main_project/ALSPAC_EWAS/methyl_variance/phen/FOM/FOM.qcovar", delim = " ", col_names = F)
+colnames(covars) <- c("ALN", "Sample_Name", "Bcell", "CD4T", "CD8T", "Gran", "Mono", "NK", "age", paste0("PC", 1:10))
+
+pheno <- samplesheet %>%
+	left_join(covars) %>%
+	dplyr::select(one_of(colnames(covars)), BCD_id, BCD_plate, MSA4Plate_id, Slide) %>%
+	dplyr::filter(!is.na(PC1))
 
 #load the methylation data
 load(paste0(ms_dir, "betas/data.Robj"))
-meth <- beta[, samplesheet$Sample_Name] #keep the samples that correspond to the time point you're interested in
+meth <- beta[, pheno$Sample_Name] #keep the samples that correspond to the time point you're interested in
 rm(beta)
 dim(meth)
 
-mdata <- as.matrix(meth)
-mdata <- mdata[complete.cases(mdata), ]
-dim(mdata)
 
-#
+# ---------------------------------------------------------------
 # sort the FOM1 phenotype data
-#
+# ---------------------------------------------------------------
 
 # load the FOM1 data
 
@@ -65,10 +72,15 @@ cor_dat <- abs(cor(comp_dat, use = "pairwise.complete.obs")) # STILL LOADS OF NA
 # ---------------------------------------------------------------
 # generate SVs
 # ---------------------------------------------------------------
+
+mdata <- as.matrix(meth)
+mdata <- mdata[complete.cases(mdata), ]
+dim(mdata)
+
 ## Determine the number of SVs
 est_nsv <- function(meth, trait, df) {
-	fom <- as.formula(paste0("t(", meth, ")", " ~ ", trait))
-	y.r <- t(resid(lm(fom, data = get(df))))
+	fom <- as.formula(paste0("t(meth)", " ~ ", trait))
+	y.r <- t(resid(lm(fom, data = df)))
 	print("Estimating number of SVs needed")
 	n_sv <- EstDimRMT(y.r, FALSE)$dim + 1
 	return(n_sv)
@@ -81,26 +93,45 @@ for (i in seq(0.05, 0.5, 0.05)) {
 	df[[col_nam]] <- rbinom(ncol(mdata), 1, i)
 }
 
+traits <- colnames(df)
 n_sv <- vector(mode = "numeric", length = ncol(df))
+names(n_sv) <- colnames(df)
 for (i in colnames(df)) {
 	print(i)
 	n_sv[[i]] <- est_nsv(mdata, i, df)
 }
 
+df <- cbind(pheno, df)
+
 # generate the SVs
-covars <- 
-traits <- 
-sva_list <- list()
+covs <- colnames(pheno)[-c(1, 2)]
+
+sva_list <- vector(mode = "list", length = length(traits))
+names(sva_list) <- traits
+i=1
 for (i in 1:length(traits)) {
 	trait <- traits[i]
-	fom <- as.formula(paste0(trait, " ~ ", paste(covars, collapse = " + ")))
+	fom <- as.formula(paste0(trait, " ~ ", paste(covs, collapse = " + ")))
+	fom0 <- as.formula(paste0(" ~ ", paste(covs, collapse = " + ")))
 	mod <- model.matrix(fom, data = df)
-	mod0 <- model.matrix(~1, data = df)
+	mod0 <- model.matrix(fom0, data = df)
 
-	sva_list[[i]] <- smartsva.cpp(mdat, mod, mod0=NULL, n.sv = nsv, B = 5)	
+	nsv <- n_sv[[trait]]
+
+	sva_list[[trait]] <- smartsva.cpp(mdata, mod, mod0, n.sv = nsv)	
 }
 
+sva_res_list <- list()
+for (i in traits) {
+	svs <- sva_list[[trait]]$sv
+	sva_temp <- data.frame()
+	for (j in seq_along(svs)) {
 
+	}
+	fit <- lm()
+
+	svs
+}
 
 
 
