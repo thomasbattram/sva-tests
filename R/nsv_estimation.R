@@ -160,7 +160,7 @@ for (i in 1:length(traits)) {
 	if (!is.null(svobj)) sva_list[[trait]] <- svobj
 }
 
-save.image(file = "sva_list")
+save(sva_list, file = "sva_list.RData")
 
 # sva_res_list <- list()
 # for (i in traits) {
