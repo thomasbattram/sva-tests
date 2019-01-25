@@ -46,40 +46,60 @@ dim(meth)
 
 
 #
-count_na <- function(dat, col_or_row = 2) {
-	stopifnot(col_or_row %in% c(1,2))
-	x <- apply(dat, col_or_row, function(x) {sum(is.na(x))})
-	return(x)
-}
-# remove people
-row_na_num <- count_na(comb_dat, 1)
-summary(row_na_num)
-comb_dat <- comb_dat[row_na_num < (ncol(comb_dat)/10), ]
-dim(comb_dat)
+# count_na <- function(dat, col_or_row = 2) {
+# 	stopifnot(col_or_row %in% c(1,2))
+# 	x <- apply(dat, col_or_row, function(x) {sum(is.na(x))})
+# 	return(x)
+# }
+# # remove people
+# row_na_num <- count_na(comb_dat, 1)
+# summary(row_na_num)
+# comb_dat <- comb_dat[row_na_num < (ncol(comb_dat)/10), ]
+# dim(comb_dat)
 
-na_num <- count_na(comb_dat)
-summary(na_num)
-sum(na_num == 0)
+# na_num <- count_na(comb_dat)
+# summary(na_num)
+# sum(na_num == 0)
 
 
-#comp_dat <- comb_dat[, na_num < 100] 
-comp_dat <- comb_dat[, na_num < (ncol(comb_dat)/10)] 
-dim(comp_dat)
-#comp_dat <- comp_dat[,1:200]
-cor_dat <- abs(cor(comp_dat, use = "pairwise.complete.obs")) # STILL LOADS OF NAs!!!!
+# #comp_dat <- comb_dat[, na_num < 100] 
+# comp_dat <- comb_dat[, na_num < (ncol(comb_dat)/10)] 
+# dim(comp_dat)
+# #comp_dat <- comp_dat[,1:200]
+# cor_dat <- abs(cor(comp_dat, use = "pairwise.complete.obs")) # STILL LOADS OF NAs!!!!
 
 
 # ---------------------------------------------------------------
 # generate SVs
 # ---------------------------------------------------------------
 
+### comparing smartsva and sva package estimation of nsv
+## Methylation M values (CpG by Sample)
+Y <- matrix(rnorm(20*1000), 1000, 20)
+df <- data.frame(pred=gl(2, 10))
+## Determine the number of SVs
+Y.r <- t(resid(lm(t(Y) ~ pred, data=df)))
+## Add one extra dimension to compensate potential loss of 1 degree of freedom
+## in confounded scenarios (very important)
+n.sv <- EstDimRMT(Y.r, FALSE)$dim + 1
+n.sv # 3
+
+mod = model.matrix(~pred, data=df)
+n.sv = num.sv(Y, mod, method = "leek")
+n.sv # 0
+n.sv = num.sv(Y, mod, method = "be")
+n.sv #0
+
+###
+
+
 mdata <- as.matrix(meth)
 mdata <- mdata[complete.cases(mdata), ]
 dim(mdata)
 
 ## Determine the number of SVs
-est_nsv <- function(meth, trait, df) {
-	fom <- as.formula(paste0("t(meth)", " ~ ", trait))
+est_nsv <- function(meth, traits, df) {
+	fom <- as.formula(paste0("t(meth)", " ~ ", paste(traits, collapse = " + ")))
 	y.r <- t(resid(lm(fom, data = df)))
 	print("Estimating number of SVs needed")
 	n_sv <- EstDimRMT(y.r, FALSE)$dim + 1
@@ -96,6 +116,12 @@ for (i in seq(0.05, 0.5, 0.05)) {
 traits <- colnames(df)
 n_sv <- vector(mode = "numeric", length = ncol(df))
 names(n_sv) <- colnames(df)
+
+# mod <- model.matrix(~rcont, data = df)
+# sva_nsv <- num.sv(mdata, mod, method = "leek")
+# sva_nsv_be <- num.sv(mdata, mod, method = "be")
+# mdata <- mdata[sample(1:nrow(mdata), 2000),]
+
 for (i in colnames(df)) {
 	print(i)
 	n_sv[[i]] <- est_nsv(mdata, i, df)
@@ -105,33 +131,49 @@ df <- cbind(pheno, df)
 
 # generate the SVs
 covs <- colnames(pheno)[-c(1, 2)]
+# removing slide becuase it has too many unique values (~380...)
+covs <- covs[-grep("Slide", covs)]
+new_df <- df
 
-sva_list <- vector(mode = "list", length = length(traits))
-names(sva_list) <- traits
+summary(pheno)
+
+sva_list <- vector(mode = "list", length = 2)
+names(sva_list) <- c(traits, "fail")
+
 i=1
 for (i in 1:length(traits)) {
 	trait <- traits[i]
-	fom <- as.formula(paste0(trait, " ~ ", paste(covs, collapse = " + ")))
+	
+	fom <- as.formula(paste0(" ~ ", trait, " + ", paste(covs, collapse = " + ")))
 	fom0 <- as.formula(paste0(" ~ ", paste(covs, collapse = " + ")))
 	mod <- model.matrix(fom, data = df)
 	mod0 <- model.matrix(fom0, data = df)
 
+
+	# mod <- model.matrix(~ rcont, data = df)
+	# sva_list[[trait]] <- smartsva.cpp(mdata, mod, mod0=NULL, n.sv = nsv, VERBOSE = T)	
+
+
 	nsv <- n_sv[[trait]]
 
-	sva_list[[trait]] <- smartsva.cpp(mdata, mod, mod0, n.sv = nsv)	
+	sva_list[[trait]] <- tryCatch({smartsva.cpp(mdata, mod, mod0, n.sv = nsv)},
+								   error = function(e) {NULL})
+	if (!is.null(svobj)) sva_list[[trait]] <- svobj
 }
 
-sva_res_list <- list()
-for (i in traits) {
-	svs <- sva_list[[trait]]$sv
-	sva_temp <- data.frame()
-	for (j in seq_along(svs)) {
+save.image(file = "sva_list")
 
-	}
-	fit <- lm()
+# sva_res_list <- list()
+# for (i in traits) {
+# 	svs <- sva_list[[trait]]$sv
+# 	sva_temp <- data.frame()
+# 	for (j in seq_along(svs)) {
 
-	svs
-}
+# 	}
+# 	fit <- lm()
+
+# 	svs
+# }
 
 
 
