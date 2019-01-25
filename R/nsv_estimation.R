@@ -137,10 +137,9 @@ new_df <- df
 
 summary(pheno)
 
-sva_list <- vector(mode = "list", length = 2)
-names(sva_list) <- c(traits, "fail")
+sva_list <- vector(mode = "list", length = length(traits))
+names(sva_list) <- traits
 
-i=1
 for (i in 1:length(traits)) {
 	trait <- traits[i]
 	
