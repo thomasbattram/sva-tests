@@ -155,7 +155,7 @@ for (i in 1:length(traits)) {
 
 	nsv <- n_sv[[trait]]
 
-	sva_list[[trait]] <- tryCatch({smartsva.cpp(mdata, mod, mod0, n.sv = nsv)},
+	svobj <- tryCatch({smartsva.cpp(mdata, mod, mod0, n.sv = nsv)},
 								   error = function(e) {NULL})
 	if (!is.null(svobj)) sva_list[[trait]] <- svobj
 }
