@@ -39,42 +39,9 @@ meth <- beta[, pheno$Sample_Name] #keep the samples that correspond to the time 
 rm(beta)
 dim(meth)
 
-
 # ---------------------------------------------------------------
-# sort the FOM1 phenotype data
+# testing estimating the number of SVs
 # ---------------------------------------------------------------
-
-# load the FOM1 data
-fom_dat <- read_delim(paste0(phen_dir, "ALSPAC/FOM1_only_data_FOM.txt"), delim = "\t")
-
-#
-# count_na <- function(dat, col_or_row = 2) {
-# 	stopifnot(col_or_row %in% c(1,2))
-# 	x <- apply(dat, col_or_row, function(x) {sum(is.na(x))})
-# 	return(x)
-# }
-# # remove people
-# row_na_num <- count_na(comb_dat, 1)
-# summary(row_na_num)
-# comb_dat <- comb_dat[row_na_num < (ncol(comb_dat)/10), ]
-# dim(comb_dat)
-
-# na_num <- count_na(comb_dat)
-# summary(na_num)
-# sum(na_num == 0)
-
-
-# #comp_dat <- comb_dat[, na_num < 100] 
-# comp_dat <- comb_dat[, na_num < (ncol(comb_dat)/10)] 
-# dim(comp_dat)
-# #comp_dat <- comp_dat[,1:200]
-# cor_dat <- abs(cor(comp_dat, use = "pairwise.complete.obs")) # STILL LOADS OF NAs!!!!
-
-
-# ---------------------------------------------------------------
-# generate SVs
-# ---------------------------------------------------------------
-
 
 nsamp <- seq(20, 200, 20)
 ncpg <- seq(1000, 10000, 1000)
@@ -97,28 +64,74 @@ for (i in 1:nrow(params)) {
 
 	mod = model.matrix(~pred, data=df)
 	params[i, "leek_nsv"] = num.sv(Y, mod, method = "leek")
-
 }
 
-### comparing smartsva and sva package estimation of nsv
-## Methylation M values (CpG by Sample)
-Y <- matrix(rnorm(20*1000), 1000, 20)
-df <- data.frame(pred=gl(2, 10))
-## Determine the number of SVs
-Y.r <- t(resid(lm(t(Y) ~ pred, data=df)))
-## Add one extra dimension to compensate potential loss of 1 degree of freedom
-## in confounded scenarios (very important)
-n.sv <- EstDimRMT(Y.r, FALSE)$dim + 1
-n.sv # 3
+# ---------------------------------------------------------------
+# sort the FOM1 phenotype data
+# ---------------------------------------------------------------
 
-mod = model.matrix(~pred, data=df)
-n.sv = num.sv(Y, mod, method = "leek")
-n.sv # 0
-n.sv = num.sv(Y, mod, method = "be")
-n.sv #0
+# load the FOM1 data
+fom_dat <- read_delim(paste0(phen_dir, "ALSPAC/FOM1_only_data_FOM.txt"), delim = "\t")
 
-###
 
+count_na <- function(dat, col_or_row = 2) {
+	stopifnot(col_or_row %in% c(1,2))
+	x <- apply(dat, col_or_row, function(x) {sum(is.na(x))})
+	return(x)
+}
+# remove people
+test_dat <- fom_dat %>%
+	dplyr::select(-aln, -alnqlet)
+row_na_num <- count_na(test_dat, 1)
+summary(row_na_num)
+test_dat <- test_dat[row_na_num < (ncol(test_dat)/10), ]
+dim(test_dat)
+
+na_num <- count_na(test_dat)
+summary(na_num)
+sum(na_num == 0)
+
+
+#comp_dat <- comb_dat[, na_num < 100] 
+comp_dat <- test_dat[, na_num < (ncol(test_dat)/10)] 
+dim(comp_dat)
+#comp_dat <- comp_dat[,1:200]
+cor_dat <- abs(cor(comp_dat, use = "pairwise.complete.obs")) 
+cor_dat[1:10, 1:10]
+
+# Extract traits that correlate with many others and remove them
+extract_cor <- function(dat, cutoff = 0.2) {
+	x <- apply(dat, 2, function(x) {sum(x > cutoff, na.rm = T)})
+	y <- x[order(x, decreasing = T)]
+	return(y)
+}
+
+cor_num <- extract_cor(cor_dat)
+
+cor_num[1]
+rm_list <- vector(mode = "character")
+rm_num <- 1
+temp_dat <- cor_dat
+# loop takes the pheno correlated with the most variables removes it then starts again
+while(cor_num[1] > 1) {
+	print(cor_num[1])
+	rm_list[[rm_num]] <- names(cor_num[1])
+	rm_num <- rm_num + 1
+	temp_dat <- temp_dat[!(rownames(temp_dat) %in% names(cor_num[1])), !(colnames(temp_dat) %in% names(cor_num[1]))]
+	cor_num <- extract_cor(temp_dat)
+}
+length(colnames(temp_dat)) # 36
+# remove "blood sample room"
+temp_dat <- temp_dat[-grep("Blood_sample_room", colnames(temp_dat)), -grep("Blood_sample_room", colnames(temp_dat))]
+
+# take 10 random traits from the 35
+set.seed(2)
+real_dat <- fom_dat %>%
+	dplyr::select(aln, alnqlet, one_of(sample(colnames(temp_dat), 10)))
+
+# ---------------------------------------------------------------
+# generate SVs
+# ---------------------------------------------------------------
 
 mdata <- as.matrix(meth)
 mdata <- mdata[complete.cases(mdata), ]
