@@ -127,7 +127,12 @@ temp_dat <- temp_dat[-grep("Blood_sample_room", colnames(temp_dat)), -grep("Bloo
 # take 10 random traits from the 35
 set.seed(2)
 real_dat <- fom_dat %>%
-	dplyr::select(aln, alnqlet, one_of(sample(colnames(temp_dat), 10)))
+	dplyr::select(aln, one_of(sample(colnames(temp_dat), 10))) %>%
+	dplyr::filter(aln %in% pheno$ALN)
+
+colnames(real_dat) <- gsub(" ", "_", colnames(real_dat))
+colnames(real_dat) <- gsub("\\%", "percent", colnames(real_dat))
+colnames(real_dat) <- gsub("[[:punct:]]", "_", colnames(real_dat))
 
 # ---------------------------------------------------------------
 # generate SVs
@@ -147,32 +152,56 @@ est_nsv <- function(meth, traits, df) {
 }
 
 ### ADD ALN here for real data!!!
-df <- data.frame(rcont = rnorm(ncol(mdata)))
+df <- data.frame(aln = real_dat$aln, rcont = rnorm(ncol(mdata)))
 for (i in seq(0.05, 0.5, 0.05)) {
 	col_nam <- paste0("rbin", i*10)
 	df[[col_nam]] <- rbinom(ncol(mdata), 1, i)
 }
+df <- df %>%
+	left_join(real_dat)
 
-traits <- colnames(df)
-n_sv <- vector(mode = "numeric", length = ncol(df))
-names(n_sv) <- colnames(df)
+traits <- colnames(df)[-grep("aln", colnames(df))]
+nsv_dat <- data.frame(trait = traits, rmt = NA, leek_nsv = NA)
+
+df <- df %>%
+	left_join(pheno, by = c("aln" = "ALN"))
+
+covs <- colnames(pheno)[-c(1, 2)]
+# removing slide becuase it has too many unique values (~380...) 
+# + removing BCD_plate because it doesn't work when trying to figure out number of SVs needed...
+covs <- covs[-grep(c("Slide|BCD_plate"), covs)]
 
 # mod <- model.matrix(~rcont, data = df)
 # sva_nsv <- num.sv(mdata, mod, method = "leek")
 # sva_nsv_be <- num.sv(mdata, mod, method = "be")
-# mdata <- mdata[sample(1:nrow(mdata), 2000),]
+# mdata <- mdata[sample(1:nrow(mdata), 5000), ]
+i=1
 
-for (i in colnames(df)) {
+err_msg <- function(e, print = TRUE, return = NA) {
+	if (print) print(e)
+	return(return)
+}
+
+# comp_df <- na.omit(df)
+# mdata <- mdata[, comp_df$Sample_Name]
+comp_df <- na.omit(df)
+temp_mdata <- mdata[sample(1:nrow(mdata), 2000), comp_df$Sample_Name]
+for (i in 1:nrow(nsv_dat)) {
 	print(i)
-	n_sv[[i]] <- est_nsv(mdata, i, df)
+	temp_trait <- as.character(nsv_dat[i, "trait"])
+	nsv_dat[i, "rmt"] <- tryCatch({est_nsv(temp_mdata, c(temp_trait, covs), comp_df)}, 
+						 error = function(e) {err_msg(e)})
+
+	fom <- as.formula(paste("~", paste(c(temp_trait, covs), collapse = " + ")))
+	mod <- model.matrix(fom, data=comp_df)
+	nsv_dat[i, "leek_nsv"] <- tryCatch({num.sv(temp_mdata, mod, method = "leek")}, 
+						  error = function(e) {err_msg(e)})
+
 }
 
 df <- cbind(pheno, df)
 
 # generate the SVs
-covs <- colnames(pheno)[-c(1, 2)]
-# removing slide becuase it has too many unique values (~380...)
-covs <- covs[-grep("Slide", covs)]
 new_df <- df
 
 summary(pheno)
