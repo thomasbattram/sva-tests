@@ -8,9 +8,11 @@ devtools::load_all("~/repos/usefunc")
 args <- commandArgs(trailingOnly = TRUE)
 ms_dir <- args[1]
 wd <- args[2]
+phen_dir <- args[3]
 
 # ms_dir <- "/panfs/panasas01/sscm/ms13525/aries-release-v4/data/"
 # wd <- "~/sva_tests/"
+# phen_dir <- "~/main_project/ALSPAC_EWAS/methyl_variance/phen/"
 
 setwd(wd)
 
@@ -23,7 +25,7 @@ samplesheet <- dplyr::filter(samplesheet, time_point == TP) %>%
 	mutate(ALN = as.numeric(ALN))
 
 # sort the covariate date
-covars <- read_delim("~/main_project/ALSPAC_EWAS/methyl_variance/phen/FOM/FOM.qcovar", delim = " ", col_names = F)
+covars <- read_delim(paste0(phen_dir, "FOM/FOM.qcovar"), delim = " ", col_names = F)
 colnames(covars) <- c("ALN", "Sample_Name", "Bcell", "CD4T", "CD8T", "Gran", "Mono", "NK", "age", paste0("PC", 1:10))
 
 pheno <- samplesheet %>%
@@ -43,7 +45,7 @@ dim(meth)
 # ---------------------------------------------------------------
 
 # load the FOM1 data
-
+fom_dat <- read_delim(paste0(phen_dir, "ALSPAC/FOM1_only_data_FOM.txt"), delim = "\t")
 
 #
 # count_na <- function(dat, col_or_row = 2) {
@@ -72,6 +74,31 @@ dim(meth)
 # ---------------------------------------------------------------
 # generate SVs
 # ---------------------------------------------------------------
+
+
+nsamp <- seq(20, 200, 20)
+ncpg <- seq(1000, 10000, 1000)
+params <- expand.grid(nsamp = nsamp, ncpg = ncpg)
+params$rmt_nsv <- NA
+params$leek_nsv <- NA 
+
+for (i in 1:nrow(params)) {
+	print(i)
+	t_nsamp <- params[i, "nsamp"]
+	t_ncpg <- params[i, "ncpg"]
+	## Methylation M values (CpG by Sample)
+	Y <- matrix(rnorm(t_nsamp*t_ncpg), t_ncpg, t_nsamp)
+	df <- data.frame(pred=gl(2, t_nsamp/2))
+	## Determine the number of SVs
+	Y.r <- t(resid(lm(t(Y) ~ pred, data=df)))
+	## Add one extra dimension to compensate potential loss of 1 degree of freedom
+	## in confounded scenarios (very important)
+	params[i, "rmt_nsv"] <- EstDimRMT(Y.r, FALSE)$dim + 1
+
+	mod = model.matrix(~pred, data=df)
+	params[i, "leek_nsv"] = num.sv(Y, mod, method = "leek")
+
+}
 
 ### comparing smartsva and sva package estimation of nsv
 ## Methylation M values (CpG by Sample)
