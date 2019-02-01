@@ -43,8 +43,8 @@ dim(meth)
 # testing estimating the number of SVs
 # ---------------------------------------------------------------
 
-nsamp <- seq(20, 200, 20)
-ncpg <- seq(1000, 10000, 1000)
+nsamp <- seq(100, 1000, 100)
+ncpg <- c(seq(10000, 100000, 10000), nrow(meth))
 params <- expand.grid(nsamp = nsamp, ncpg = ncpg)
 params$rmt_nsv <- NA
 params$leek_nsv <- NA 
@@ -65,6 +65,17 @@ for (i in 1:nrow(params)) {
 	mod = model.matrix(~pred, data=df)
 	params[i, "leek_nsv"] = num.sv(Y, mod, method = "leek")
 }
+
+write.table(params, "data/sim_estimated_sv_num.txt", col.names = T, row.names = F, quote = F, sep = "\t")
+
+# plot it 
+g_params <- gather(params, key = "method", value = "nsv", -ncpg, -nsamp) %>%
+	mutate(method = gsub("_nsv", "", method))
+p <- ggplot(g_params, aes(x = ncpg, y = nsv, colour = method, group = method)) +
+	geom_point() +
+	geom_line()
+
+ggsave("results/estimating_nsv_methods.pdf", plot = p)
 
 # ---------------------------------------------------------------
 # sort the FOM1 phenotype data
@@ -171,85 +182,124 @@ covs <- colnames(pheno)[-c(1, 2)]
 # + removing BCD_plate because it doesn't work when trying to figure out number of SVs needed...
 covs <- covs[-grep(c("Slide|BCD_plate"), covs)]
 
-# mod <- model.matrix(~rcont, data = df)
-# sva_nsv <- num.sv(mdata, mod, method = "leek")
-# sva_nsv_be <- num.sv(mdata, mod, method = "be")
-# mdata <- mdata[sample(1:nrow(mdata), 5000), ]
-i=1
-
-err_msg <- function(e, print = TRUE, return = NA) {
-	if (print) print(e)
-	return(return)
-}
-
-# comp_df <- na.omit(df)
-# mdata <- mdata[, comp_df$Sample_Name]
-comp_df <- na.omit(df)
-temp_mdata <- mdata[sample(1:nrow(mdata), 2000), comp_df$Sample_Name]
+# temp_mdata <- mdata[sample(1:nrow(mdata), 2000), comp_df$Sample_Name]
 for (i in 1:nrow(nsv_dat)) {
 	print(i)
 	temp_trait <- as.character(nsv_dat[i, "trait"])
-	nsv_dat[i, "rmt"] <- tryCatch({est_nsv(temp_mdata, c(temp_trait, covs), comp_df)}, 
+
+	temp_df <- df %>%
+		dplyr::select(Sample_Name, one_of(c(trait, covs))) %>%
+		na.omit()
+
+	temp_mdata <- mdata[, temp_df$Sample_Name]
+
+	nsv_dat[i, "rmt"] <- tryCatch({est_nsv(temp_mdata, c(temp_trait, covs), temp_df)}, 
 						 error = function(e) {err_msg(e)})
 
 	fom <- as.formula(paste("~", paste(c(temp_trait, covs), collapse = " + ")))
-	mod <- model.matrix(fom, data=comp_df)
+	mod <- model.matrix(fom, data=temp_df)
 	nsv_dat[i, "leek_nsv"] <- tryCatch({num.sv(temp_mdata, mod, method = "leek")}, 
 						  error = function(e) {err_msg(e)})
 
 }
 
-df <- cbind(pheno, df)
+write.table(nsv_dat, "data/estimated_sv_num.txt", col.names = T, row.names = F, quote = F, sep = "\t")
 
 # generate the SVs
-new_df <- df
-
-summary(pheno)
-
 sva_list <- vector(mode = "list", length = length(traits))
 names(sva_list) <- traits
-
+i=1
 for (i in 1:length(traits)) {
 	trait <- traits[i]
 	
+	temp_df <- df %>%
+		dplyr::select(Sample_Name, one_of(c(trait, covs))) %>%
+		na.omit()
+
+	temp_mdata <- sub_mdata[, temp_df$Sample_Name]
 	fom <- as.formula(paste0(" ~ ", trait, " + ", paste(covs, collapse = " + ")))
 	fom0 <- as.formula(paste0(" ~ ", paste(covs, collapse = " + ")))
-	mod <- model.matrix(fom, data = df)
-	mod0 <- model.matrix(fom0, data = df)
+	mod <- model.matrix(fom, data = temp_df)
+	mod0 <- model.matrix(fom0, data = temp_df)
 
+	nsv <- max(unlist(nsv_dat[nsv_dat$trait == trait, c(2,3), drop = T]))
 
-	# mod <- model.matrix(~ rcont, data = df)
-	# sva_list[[trait]] <- smartsva.cpp(mdata, mod, mod0=NULL, n.sv = nsv, VERBOSE = T)	
-
-
-	nsv <- n_sv[[trait]]
-
-	svobj <- tryCatch({smartsva.cpp(mdata, mod, mod0, n.sv = nsv)},
-								   error = function(e) {NULL})
+	svobj <- tryCatch({smartsva.cpp(temp_mdata, mod, mod0, n.sv = nsv)},
+								   error = function(e) {err_msg(e = e, return = NULL)})
 	if (!is.null(svobj)) sva_list[[trait]] <- svobj
 }
 
-save(sva_list, file = "sva_list.RData")
+# test the SVs
+sva_res_list <- list()
+i=traits[1]
+for (i in traits) {
+	print(i)
+	temp_df <- df %>%
+		dplyr::select(Sample_Name, one_of(c(i, covs))) %>%
+		na.omit()
+	
+	svs <- sva_list[[i]]$sv
+	if (is.null(svs)) next
+	sva_temp <- as.data.frame(matrix(NA, nrow = length(covs), ncol = ncol(svs) + 1))
+	colnames(sva_temp) <- c("covariate", paste0("sv", 1:ncol(svs)))
+	sva_temp$covariate <- covs
 
-# sva_res_list <- list()
-# for (i in traits) {
-# 	svs <- sva_list[[trait]]$sv
-# 	sva_temp <- data.frame()
-# 	for (j in seq_along(svs)) {
+	res_list <- list()
+	for (j in 1:ncol(svs)) {
+		print(j)
+		temp_svs <- as.data.frame(svs[, 1:j, drop = F])
+		
+		res_list[[j]] <- apply(temp_df[, covs], 2, function(x) {summary(lm(x ~ ., data = temp_svs))$adj.r.squared})
+		
+	}
+	res <- as.data.frame(do.call(rbind, res_list)) %>%
+		mutate(sv = as.factor(1:nrow(.))) %>%
+		dplyr::select(sv, everything())
 
-# 	}
-# 	fit <- lm()
+	sva_res_list[[i]] <- res
+}
 
-# 	svs
+save(sva_res_list, file = "data/cov_r2_res.RData")
+
+# plot it all! 
+plot_list <- list()
+for (i in names(sva_res_list)) {
+	g_res <- gather(sva_res_list[[i]], key = "covariate", value = "adjusted_r2", -sv)
+	plot_list[[i]] <- ggplot(g_res, aes(x = sv, y = adjusted_r2, colour = covariate, group = covariate)) +
+		geom_point() + 
+		geom_line() + 
+		labs(title = i)
+}
+
+pdf("results/covs_variance_explained.pdf", width = 12, height = 10)
+marrangeGrob(plot_list, ncol = 1, nrow = 2)
+dev.off()
+
+
+# all_res <- do.call(rbind, sva_res_list) 
+# rownames(all_res) <- NULL
+
+# g_all_res <- all_res %>%
+# 	gather(key = "covariate", value = "adjusted_r2", -sv)
+
+# p <- ggplot(g_all_res, aes(x = covariate, y = adjusted_r2)) +
+# 	geom_violin()
+
+# p_violin_list <- list()
+# for (i in seq(10, max(as.numeric(g_all_res$sv)), 10)) {
+# 	temp_res <- g_all_res %>%
+# 		dplyr::filter(sv == i)
+# 	p_violin_list[[as.character(i)]] <- ggplot(temp_res, aes(x = covariate, y = adjusted_r2)) +
+# 		geom_violin()	
 # }
 
+# pdf("results/covs_r2_violin.pdf", width = 15, height = 10)
+# marrangeGrob(p_violin_list, nrow = 2, ncol = 1)
+# dev.off()
 
+# ggsave("results/covs_r2_violin.pdf", plot = p, width = 15, height = 10, units = "in")
 
-
-
-
-
-
+names(sva_res_list)
 
 
 
