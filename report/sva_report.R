@@ -25,6 +25,11 @@ ncpg_dat_10 <- read_delim("~/sva_tests/results/ncpg_comp_10_sims.txt", delim = "
 # mv and rand ncpg dat 
 mv_vs_rand <- read_delim("~/sva_tests/results/mv_v_rand_ncpg_comp_10_sims.txt", delim = "\t")
 
+# sv number
+estimated_num <- read_delim("~/sva_tests/data/sim_estimated_sv_num.txt", delim = "\t")
+load("~/sva_tests/data/cov_r2_res.RData")
+nsv_dat <- read_delim("~/sva_tests/data/estimated_sv_num.txt", delim = "\t")
+
 # Captioner setup
 table_nums <- captioner(prefix = "Table")
 fig_nums <- captioner()
@@ -111,5 +116,29 @@ print(mv_vs_random_plot)
 ## ---- ncpg_plot -----------------------------------
 print(ncpg_plot)
 
+## ---- nsv_setup -----------------------------------
+
+g_estimated_num <- gather(estimated_num, key = "method", value = "nsv", -ncpg, -nsamp) %>%
+	mutate(method = gsub("_nsv", "", method))
+
+est_num_plot <- ggplot(g_estimated_num, aes(x = ncpg, y = nsv, colour = as.factor(nsamp))) +
+	geom_point() +
+	geom_line(aes(linetype = method)) +
+	scale_colour_discrete(name = "n_sample")
+
+fig_nums(name = "est_num_plot", caption = "Number of SVs required estimated using num.sv() and random matrix theory")
+est_num_plot_cap <- fig_nums("est_num_plot")
+
+plot_list <- list()
+for (i in names(sva_res_list)) {
+	g_res <- gather(sva_res_list[[i]], key = "covariate", value = "adjusted_r2", -sv)
+	plot_list[[i]] <- ggplot(g_res, aes(x = sv, y = adjusted_r2, colour = covariate, group = covariate)) +
+		geom_point() + 
+		geom_line() + 
+		labs(title = i)
+}
+
+fig_nums(name = "covs_var_exp", caption = "Variance of important covariates explained by SVs")
+covs_var_exp_cap <- fig_nums("covs_var_exp")
 
 

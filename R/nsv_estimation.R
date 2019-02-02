@@ -71,9 +71,10 @@ write.table(params, "data/sim_estimated_sv_num.txt", col.names = T, row.names = 
 # plot it 
 g_params <- gather(params, key = "method", value = "nsv", -ncpg, -nsamp) %>%
 	mutate(method = gsub("_nsv", "", method))
-p <- ggplot(g_params, aes(x = ncpg, y = nsv, colour = method, group = method)) +
+p <- ggplot(g_params, aes(x = ncpg, y = nsv, colour = as.factor(nsamp))) +
 	geom_point() +
-	geom_line()
+	geom_line(aes(linetype = method)) + 
+	scale_colour_discrete(name = "n_sample")
 
 ggsave("results/estimating_nsv_methods.pdf", plot = p)
 
@@ -188,7 +189,7 @@ for (i in 1:nrow(nsv_dat)) {
 	temp_trait <- as.character(nsv_dat[i, "trait"])
 
 	temp_df <- df %>%
-		dplyr::select(Sample_Name, one_of(c(trait, covs))) %>%
+		dplyr::select(Sample_Name, one_of(c(temp_trait, covs))) %>%
 		na.omit()
 
 	temp_mdata <- mdata[, temp_df$Sample_Name]
