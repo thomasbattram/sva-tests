@@ -141,4 +141,8 @@ for (i in names(sva_res_list)) {
 fig_nums(name = "covs_var_exp", caption = "Variance of important covariates explained by SVs")
 covs_var_exp_cap <- fig_nums("covs_var_exp")
 
+## ---- est_num_plot -----------------------------------
+print(est_num_plot)
 
+## ---- covs_var_exp -----------------------------------
+print(marrangeGrob(plot_list, ncol = 1, nrow = 2))
