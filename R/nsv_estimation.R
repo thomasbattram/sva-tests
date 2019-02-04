@@ -184,27 +184,31 @@ covs <- colnames(pheno)[-c(1, 2)]
 covs <- covs[-grep(c("Slide|BCD_plate"), covs)]
 
 # temp_mdata <- mdata[sample(1:nrow(mdata), 2000), comp_df$Sample_Name]
-for (i in 1:nrow(nsv_dat)) {
-	print(i)
-	temp_trait <- as.character(nsv_dat[i, "trait"])
+if (!file.exists("data/estimated_sv_num.txt")) {
+	for (i in 1:nrow(nsv_dat)) {
+		print(i)
+		temp_trait <- as.character(nsv_dat[i, "trait"])
 
-	temp_df <- df %>%
-		dplyr::select(Sample_Name, one_of(c(temp_trait, covs))) %>%
-		na.omit()
+		temp_df <- df %>%
+			dplyr::select(Sample_Name, one_of(c(temp_trait, covs))) %>%
+			na.omit()
 
-	temp_mdata <- mdata[, temp_df$Sample_Name]
+		temp_mdata <- mdata[, temp_df$Sample_Name]
 
-	nsv_dat[i, "rmt"] <- tryCatch({est_nsv(temp_mdata, c(temp_trait, covs), temp_df)}, 
-						 error = function(e) {err_msg(e)})
+		nsv_dat[i, "rmt"] <- tryCatch({est_nsv(temp_mdata, c(temp_trait, covs), temp_df)}, 
+							 error = function(e) {err_msg(e)})
 
-	fom <- as.formula(paste("~", paste(c(temp_trait, covs), collapse = " + ")))
-	mod <- model.matrix(fom, data=temp_df)
-	nsv_dat[i, "leek_nsv"] <- tryCatch({num.sv(temp_mdata, mod, method = "leek")}, 
-						  error = function(e) {err_msg(e)})
+		fom <- as.formula(paste("~", paste(c(temp_trait, covs), collapse = " + ")))
+		mod <- model.matrix(fom, data=temp_df)
+		nsv_dat[i, "leek_nsv"] <- tryCatch({num.sv(temp_mdata, mod, method = "leek")}, 
+							  error = function(e) {err_msg(e)})
 
+	}
+
+	write.table(nsv_dat, "data/estimated_sv_num.txt", col.names = T, row.names = F, quote = F, sep = "\t")
+} else {
+	nsv_dat <- read_delim("data/estimated_sv_num.txt", delim = "\t")
 }
-
-write.table(nsv_dat, "data/estimated_sv_num.txt", col.names = T, row.names = F, quote = F, sep = "\t")
 
 # generate the SVs
 sva_list <- vector(mode = "list", length = length(traits))
@@ -217,7 +221,7 @@ for (i in 1:length(traits)) {
 		dplyr::select(Sample_Name, one_of(c(trait, covs))) %>%
 		na.omit()
 
-	temp_mdata <- sub_mdata[, temp_df$Sample_Name]
+	temp_mdata <- mdata[, temp_df$Sample_Name]
 	fom <- as.formula(paste0(" ~ ", trait, " + ", paste(covs, collapse = " + ")))
 	fom0 <- as.formula(paste0(" ~ ", paste(covs, collapse = " + ")))
 	mod <- model.matrix(fom, data = temp_df)
@@ -300,7 +304,6 @@ dev.off()
 
 # ggsave("results/covs_r2_violin.pdf", plot = p, width = 15, height = 10, units = "in")
 
-names(sva_res_list)
 
 
 
