@@ -184,31 +184,28 @@ covs <- colnames(pheno)[-c(1, 2)]
 covs <- covs[-grep(c("Slide|BCD_plate"), covs)]
 
 # temp_mdata <- mdata[sample(1:nrow(mdata), 2000), comp_df$Sample_Name]
-if (!file.exists("data/estimated_sv_num.txt")) {
-	for (i in 1:nrow(nsv_dat)) {
-		print(i)
-		temp_trait <- as.character(nsv_dat[i, "trait"])
+for (i in 1:nrow(nsv_dat)) {
+	print(i)
+	temp_trait <- as.character(nsv_dat[i, "trait"])
 
-		temp_df <- df %>%
-			dplyr::select(Sample_Name, one_of(c(temp_trait, covs))) %>%
-			na.omit()
+	temp_df <- df %>%
+		dplyr::select(Sample_Name, one_of(c(temp_trait, covs))) %>%
+		na.omit()
 
-		temp_mdata <- mdata[, temp_df$Sample_Name]
+	temp_mdata <- mdata[, temp_df$Sample_Name]
 
-		nsv_dat[i, "rmt"] <- tryCatch({est_nsv(temp_mdata, c(temp_trait, covs), temp_df)}, 
-							 error = function(e) {err_msg(e)})
+	nsv_dat[i, "rmt"] <- tryCatch({est_nsv(temp_mdata, temp_trait, temp_df)}, 
+						 error = function(e) {err_msg(e)})
 
-		fom <- as.formula(paste("~", paste(c(temp_trait, covs), collapse = " + ")))
-		mod <- model.matrix(fom, data=temp_df)
-		nsv_dat[i, "leek_nsv"] <- tryCatch({num.sv(temp_mdata, mod, method = "leek")}, 
-							  error = function(e) {err_msg(e)})
+	fom <- as.formula(paste("~", paste(temp_trait, collapse = " + ")))
+	mod <- model.matrix(fom, data=temp_df)
+	nsv_dat[i, "leek_nsv"] <- tryCatch({num.sv(temp_mdata, mod, method = "leek")}, 
+						  error = function(e) {err_msg(e)})
 
-	}
-
-	write.table(nsv_dat, "data/estimated_sv_num.txt", col.names = T, row.names = F, quote = F, sep = "\t")
-} else {
-	nsv_dat <- read_delim("data/estimated_sv_num.txt", delim = "\t")
 }
+
+write.table(nsv_dat, "data/estimated_sv_num.txt", col.names = T, row.names = F, quote = F, sep = "\t")
+
 
 # generate the SVs
 sva_list <- vector(mode = "list", length = length(traits))
@@ -222,14 +219,14 @@ for (i in 1:length(traits)) {
 		na.omit()
 
 	temp_mdata <- mdata[, temp_df$Sample_Name]
-	fom <- as.formula(paste0(" ~ ", trait, " + ", paste(covs, collapse = " + ")))
-	fom0 <- as.formula(paste0(" ~ ", paste(covs, collapse = " + ")))
+	fom <- as.formula(paste0(" ~ ", trait))
+	# fom0 <- as.formula(paste0(" ~ ",))
 	mod <- model.matrix(fom, data = temp_df)
-	mod0 <- model.matrix(fom0, data = temp_df)
+	# mod0 <- model.matrix(fom0, data = temp_df)
 
 	nsv <- max(unlist(nsv_dat[nsv_dat$trait == trait, c(2,3), drop = T]))
 
-	svobj <- tryCatch({smartsva.cpp(temp_mdata, mod, mod0, n.sv = nsv)},
+	svobj <- tryCatch({smartsva.cpp(temp_mdata, mod, mod0=NULL, n.sv = nsv)},
 								   error = function(e) {err_msg(e = e, return = NULL)})
 	if (!is.null(svobj)) sva_list[[trait]] <- svobj
 }
