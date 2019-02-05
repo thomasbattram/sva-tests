@@ -302,7 +302,31 @@ dev.off()
 # ggsave("results/covs_r2_violin.pdf", plot = p, width = 15, height = 10, units = "in")
 
 
+## looking at the time taken to get to within 5% of max variance explained
 
+i=names(sva_res_list)[1]
+res_list <- list()
+for (i in names(sva_res_list)) {
+	temp_dat <- sva_res_list[[i]]
+	temp_res <- data.frame(cov = NA, sv = NA, adj_r2 = NA, max_adj_r2 = NA)
+
+	for (j in 2:ncol(temp_dat)) {
+		cov <- colnames(temp_dat)[j]
+		temp_res[j-1, "cov"] <- cov
+		temp_res[j-1, "max_adj_r2"] <- max(temp_dat[, cov])
+		sv <- 1
+		adj_r2 <- temp_dat[sv, cov]
+		if (max(temp_dat[, cov]) != adj_r2) {
+			while (adj_r2 < max(temp_dat[, cov]) * 0.95) {
+				sv <- sv+1
+				adj_r2 <- temp_dat[sv, cov]
+			}
+		}
+		temp_res[j-1, "sv"] <- sv
+		temp_res[j-1, "adj_r2"] <- adj_r2
+	}
+	res_list[[i]] <- temp_res
+}
 
 
 

@@ -2,7 +2,7 @@
 
 rm(list = ls())
 
-pkgs <- c("tidyverse", "knitr", "captioner", "pander")
+pkgs <- c("tidyverse", "knitr", "captioner", "pander", "gridExtra")
 lapply(pkgs, require, character.only = TRUE)
 
 devtools::load_all("~/repos/usefunc")
@@ -129,8 +129,11 @@ est_num_plot <- ggplot(g_estimated_num, aes(x = ncpg, y = nsv, colour = as.facto
 fig_nums(name = "est_num_plot", caption = "Number of SVs required estimated using num.sv() and random matrix theory")
 est_num_plot_cap <- fig_nums("est_num_plot")
 
+# take just three plots 
+to_keep <- c("rcont", "rbin4", "Lactate__mmol_l___FOM1")
+
 plot_list <- list()
-for (i in names(sva_res_list)) {
+for (i in to_keep) {
 	g_res <- gather(sva_res_list[[i]], key = "covariate", value = "adjusted_r2", -sv)
 	plot_list[[i]] <- ggplot(g_res, aes(x = sv, y = adjusted_r2, colour = covariate, group = covariate)) +
 		geom_point() + 
@@ -141,8 +144,20 @@ for (i in names(sva_res_list)) {
 fig_nums(name = "covs_var_exp", caption = "Variance of important covariates explained by SVs")
 covs_var_exp_cap <- fig_nums("covs_var_exp")
 
+# test_res <- sva_res_list[c(to_keep)] %>%
+# 	do.call(rbind, .) %>%
+# 	rownames_to_column(var = "trait") %>%
+# 	mutate(trait = gsub("\\..*", "", trait)) %>%
+# 	gather(key = "covariate", value = "adjusted_r2", -sv, -trait)
+
+
+# nsv_p <- ggplot(test_res, aes(x = sv, y = adjusted_r2, colour = covariate, group = covariate)) +
+# 	geom_point() +
+# 	geom_line() +
+# 	theme(legend.position = "bottom")
+
 ## ---- est_num_plot -----------------------------------
 print(est_num_plot)
 
 ## ---- covs_var_exp -----------------------------------
-print(marrangeGrob(plot_list, ncol = 1, nrow = 2))
+marrangeGrob(plot_list, ncol = 1, nrow = 1)
