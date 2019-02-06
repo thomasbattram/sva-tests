@@ -14,7 +14,7 @@ params <- read_delim("~/sva_tests/results/sv_test_params_sims.txt", delim = "\t"
 
 # sva vs smart sva
 smart_v_normal <- read_delim("~/sva_tests/results/smartsva_v_sva_sims.txt", delim = "\t")
-smart_v_normal_mv <- read_delim("~/sva_tests/results/smartsva_v_sva_simsmost_var.txt", delim = "\t")
+# smart_v_normal_mv <- read_delim("~/sva_tests/results/smartsva_v_sva_simsmost_var.txt", delim = "\t")
 
 # ncpg with 20 svs
 ncpg_dat_20 <- read_delim("~/sva_tests/results/ncpg_comp_sims.txt", delim = "\t")
@@ -29,6 +29,7 @@ mv_vs_rand <- read_delim("~/sva_tests/results/mv_v_rand_ncpg_comp_10_sims.txt", 
 estimated_num <- read_delim("~/sva_tests/data/sim_estimated_sv_num.txt", delim = "\t")
 load("~/sva_tests/data/cov_r2_res.RData")
 nsv_dat <- read_delim("~/sva_tests/data/estimated_sv_num.txt", delim = "\t")
+svs_needed <- read_delim("~/sva_tests/results/estimated_sv_num.txt", delim = "\t")
 
 # Captioner setup
 table_nums <- captioner(prefix = "Table")
@@ -129,35 +130,54 @@ est_num_plot <- ggplot(g_estimated_num, aes(x = ncpg, y = nsv, colour = as.facto
 fig_nums(name = "est_num_plot", caption = "Number of SVs required estimated using num.sv() and random matrix theory")
 est_num_plot_cap <- fig_nums("est_num_plot")
 
-# take just three plots 
-to_keep <- c("rcont", "rbin4", "Lactate__mmol_l___FOM1")
+# take just two plots 
+sm_sva_res_list <- sva_res_list[grep("Glucose|rcont", names(sva_res_list))]
 
-plot_list <- list()
-for (i in to_keep) {
-	g_res <- gather(sva_res_list[[i]], key = "covariate", value = "adjusted_r2", -sv)
-	plot_list[[i]] <- ggplot(g_res, aes(x = sv, y = adjusted_r2, colour = covariate, group = covariate)) +
-		geom_point() + 
-		geom_line() + 
-		labs(title = i)
-}
+sva_plot_res <- do.call(rbind, sm_sva_res_list) %>%
+	rownames_to_column(var = "trait") %>%
+	mutate(trait = gsub("\\..*", "", trait)) %>%
+	mutate(trait = ifelse(grepl("Glucose", trait), "glc", trait)) %>%
+	gather(key = "covariate", value = "adjusted_r2", -sv, -trait)
+
+covs_r2_p <- ggplot(sva_plot_res, aes(x = sv, y = adjusted_r2, colour = covariate, group = covariate)) +
+	geom_point() +
+	geom_line() +
+	facet_grid(trait ~ .)
 
 fig_nums(name = "covs_var_exp", caption = "Variance of important covariates explained by SVs")
 covs_var_exp_cap <- fig_nums("covs_var_exp")
 
-# test_res <- sva_res_list[c(to_keep)] %>%
-# 	do.call(rbind, .) %>%
-# 	rownames_to_column(var = "trait") %>%
-# 	mutate(trait = gsub("\\..*", "", trait)) %>%
-# 	gather(key = "covariate", value = "adjusted_r2", -sv, -trait)
+# for the table
+sum_res <- rbind(
+sim_res %>% dplyr::filter(max_sv == "not_max") %>%
+	group_by(cov) %>%
+	summarise(median_sv_95 = median(as.numeric(sv))) %>%
+	left_join(
+		sim_res %>% dplyr::filter(max_sv == "max") %>%
+		group_by(cov) %>%
+		summarise(median_sv_max = median(as.numeric(sv)))
+		) %>%
+	mutate(data = "simulated")
+,
+real_res %>% dplyr::filter(max_sv == "not_max") %>%
+	group_by(cov) %>%
+	summarise(median_sv_95 = median(as.numeric(sv))) %>%
+	left_join(
+		real_res %>% dplyr::filter(max_sv == "max") %>%
+		group_by(cov) %>%
+		summarise(median_sv_max = median(as.numeric(sv)))
+		) %>%
+	mutate(data = "real")
+)
 
-
-# nsv_p <- ggplot(test_res, aes(x = sv, y = adjusted_r2, colour = covariate, group = covariate)) +
-# 	geom_point() +
-# 	geom_line() +
-# 	theme(legend.position = "bottom")
+table_nums(name = "nsv_summary", caption = "Summary of variance of important covariates explained by SVs")
+nsv_summary_cap <- table_nums("nsv_summary")
 
 ## ---- est_num_plot -----------------------------------
 print(est_num_plot)
 
 ## ---- covs_var_exp -----------------------------------
-marrangeGrob(plot_list, ncol = 1, nrow = 1)
+print(covs_r2_p)
+
+## ---- nsv_summary -----------------------------------
+pander(sum_res)
