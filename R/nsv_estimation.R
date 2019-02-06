@@ -67,7 +67,7 @@ for (i in 1:nrow(params)) {
 }
 
 write.table(params, "data/sim_estimated_sv_num.txt", col.names = T, row.names = F, quote = F, sep = "\t")
-
+params <- read_delim("data/sim_estimated_sv_num.txt", delim = "\t")
 # plot it 
 g_params <- gather(params, key = "method", value = "nsv", -ncpg, -nsamp) %>%
 	mutate(method = gsub("_nsv", "", method))
@@ -303,20 +303,20 @@ dev.off()
 
 
 ## looking at the time taken to get to within 5% of max variance explained
-
+load("data/cov_r2_res.RData")
 i=names(sva_res_list)[1]
 res_list <- list()
 for (i in names(sva_res_list)) {
 	temp_dat <- sva_res_list[[i]]
-	temp_res <- data.frame(cov = NA, sv = NA, adj_r2 = NA, max_adj_r2 = NA)
+	temp_res <- data.frame(trait = NA, cov = NA, sv = NA, adj_r2 = NA, max_sv = NA, max_adj_r2 = NA)
 
 	for (j in 2:ncol(temp_dat)) {
 		cov <- colnames(temp_dat)[j]
 		temp_res[j-1, "cov"] <- cov
-		temp_res[j-1, "max_adj_r2"] <- max(temp_dat[, cov])
 		sv <- 1
 		adj_r2 <- temp_dat[sv, cov]
-		if (max(temp_dat[, cov]) != adj_r2) {
+		if (sign(max(temp_dat[, cov])) == -1) adj_r2 <- 0
+		if (adj_r2 != 0) {
 			while (adj_r2 < max(temp_dat[, cov]) * 0.95) {
 				sv <- sv+1
 				adj_r2 <- temp_dat[sv, cov]
@@ -324,9 +324,52 @@ for (i in names(sva_res_list)) {
 		}
 		temp_res[j-1, "sv"] <- sv
 		temp_res[j-1, "adj_r2"] <- adj_r2
-	}
-	res_list[[i]] <- temp_res
+		temp_res[j-1, "trait"] <- i
+		temp_res[j-1, "max_sv"] <- "not_max"
+		temp_res[j-1, "max_adj_r2"] <- "not_max"
+		# add in the max sv and adj_r2
+ 	} 
+
+temp_res2 <- data.frame(trait = NA, cov = NA, sv = NA, adj_r2 = NA, max_sv = NA, max_adj_r2 = NA)
+ 	for (k in 2:ncol(temp_dat)) {
+ 		cov <- colnames(temp_dat)[k]
+ 		temp_res2[k-1, "cov"] <- cov
+		temp_res2[k-1, "adj_r2"] <- max(temp_dat[, cov])
+		temp_res2[k-1, "sv"] <- max(as.numeric(temp_dat[["sv"]]))
+		temp_res2[k-1, "max_sv"] <- "max"
+		temp_res2[k-1, "max_adj_r2"] <- "max"
+		temp_res2[k-1, "trait"] <- i
+ 	}
+ 	temp_fin_res <- rbind(temp_res, temp_res2)
+	res_list[[i]] <- temp_fin_res
 }
+
+# make the table and make it look nice
+res <- do.call(rbind, res_list)
+rownames(res) <- NULL
+head(res)
+res <- res %>%
+	mutate(data = ifelse(grepl("^r", trait), "simulated", "real"))
+	# gather(key = "max_sv", value = "sv", -trait, -cov, -adj_r2, -max_adj_r2, -data) %>%
+	# gather(key = "max_adj_r2", value = "adj_r2", -trait, -cov, -sv, -max_sv, -data)
+
+unique(res$trait)
+
+new_trait_names <- c("time_of_last_meal", "IDLCE_IDLL", "sLDLCE", "hip_cor", "lac", "glc", "neck_angle", "cre", "art_distensibility", "haem")
+names(new_trait_names) <- unique(res$trait)[12:21] 
+
+for (i in names(new_trait_names)) {
+	res[res$trait == i, "trait"] <- new_trait_names[i]
+}
+
+write.table(res, "results/svs_needed.txt", quote = F, col.names = T, row.names = F, sep = "\t")
+
+p <- ggplot(res, aes(x = cov, y = sv, colour = trait, shape = as.factor(max_sv))) +
+	geom_point() +
+	geom_jitter() +
+	facet_grid(~ data)
+
+ggsave("results/sv_r2_plot.pdf", plot = p)
 
 
 
