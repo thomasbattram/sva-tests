@@ -277,6 +277,21 @@ pdf("results/covs_variance_explained.pdf", width = 12, height = 10)
 marrangeGrob(plot_list, ncol = 1, nrow = 2)
 dev.off()
 
+# just 2 of the phenotypes
+sm_sva_res_list <- sva_res_list[grep("Glucose|rcont", names(sva_res_list))]
+
+sva_plot_res <- do.call(rbind, sm_sva_res_list) %>%
+	rownames_to_column(var = "trait") %>%
+	mutate(trait = gsub("\\..*", "", trait)) %>%
+	mutate(trait = ifelse(grepl("Glucose", trait), "glc", trait)) %>%
+	gather(key = "covariate", value = "adjusted_r2", -sv, -trait)
+
+p <- ggplot(sva_plot_res, aes(x = sv, y = adjusted_r2, colour = covariate, group = covariate)) +
+	geom_point() +
+	geom_line() +
+	facet_grid(trait ~ .)
+
+ggsave("results/two_traits_covs_variance_explained.pdf", plot = p)
 
 # all_res <- do.call(rbind, sva_res_list) 
 # rownames(all_res) <- NULL
@@ -371,7 +386,28 @@ p <- ggplot(res, aes(x = cov, y = sv, colour = trait, shape = as.factor(max_sv))
 
 ggsave("results/sv_r2_plot.pdf", plot = p)
 
+sim_res <- dplyr::filter(res, data == "simulated")
+real_res <- dplyr::filter(res, data == "real")
 
-
-
+sum_res <- rbind(
+sim_res %>% dplyr::filter(max_sv == "not_max") %>%
+	group_by(cov) %>%
+	summarise(median_sv_95 = median(as.numeric(sv))) %>%
+	left_join(
+		sim_res %>% dplyr::filter(max_sv == "max") %>%
+		group_by(cov) %>%
+		summarise(median_sv_max = median(as.numeric(sv)))
+		) %>%
+	mutate(data = "simulated")
+,
+real_res %>% dplyr::filter(max_sv == "not_max") %>%
+	group_by(cov) %>%
+	summarise(median_sv_95 = median(as.numeric(sv))) %>%
+	left_join(
+		real_res %>% dplyr::filter(max_sv == "max") %>%
+		group_by(cov) %>%
+		summarise(median_sv_max = median(as.numeric(sv)))
+		) %>%
+	mutate(data = "real")
+)
 
