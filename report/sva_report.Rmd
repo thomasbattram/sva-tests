@@ -21,6 +21,10 @@ read_chunk("~/sva_tests/report/sva_report.R")
 ```{r ncpg_setup, results = "hide", message = FALSE, warning = FALSE}
 ```  
 
+```{r nsv_setup, results = "hide", message = FALSE, warning = FALSE}
+```  
+
+
 ## Aim:
 To test the length of time taken to generate surrogate variables (SVs) using various different parameters, compare the SVs generated and find out how many SVs are needed to account for variation in typical covariates.
 
