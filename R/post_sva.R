@@ -25,13 +25,11 @@ if (most_var) {
 
 # load most var as well for comparison at the end
 load("data/sv_test_simsmost_var.RData")
-sv_list_mv <- sv_list
 file <- "data/sv_test_sims.RData"
 params <- read_delim(paste0("results/sv_test_params_sims", mnam, ".txt"), delim = "\t")
 load(file)
 
 length(sv_list)
-
 
 # ---------------------------------------------------------------
 # Check timings of the results
