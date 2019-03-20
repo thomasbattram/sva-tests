@@ -29,7 +29,7 @@ mv_vs_rand <- read_delim("~/sva_tests/results/mv_v_rand_ncpg_comp_10_sims.txt", 
 estimated_num <- read_delim("~/sva_tests/data/sim_estimated_sv_num.txt", delim = "\t")
 load("~/sva_tests/data/cov_r2_res.RData")
 nsv_dat <- read_delim("~/sva_tests/data/estimated_sv_num.txt", delim = "\t")
-svs_needed <- read_delim("~/sva_tests/results/estimated_sv_num.txt", delim = "\t")
+svs_needed <- read_delim("~/sva_tests/results/svs_needed.txt", delim = "\t")
 
 # Captioner setup
 table_nums <- captioner(prefix = "Table")
@@ -139,7 +139,7 @@ sva_plot_res <- do.call(rbind, sm_sva_res_list) %>%
 	mutate(trait = ifelse(grepl("Glucose", trait), "glc", trait)) %>%
 	gather(key = "covariate", value = "adjusted_r2", -sv, -trait)
 
-covs_r2_p <- ggplot(sva_plot_res, aes(x = sv, y = adjusted_r2, colour = covariate, group = covariate)) +
+covs_r2_p <- ggplot(sva_plot_res, aes(x = as.numeric(sv), y = adjusted_r2, colour = covariate, group = covariate)) +
 	geom_point() +
 	geom_line() +
 	facet_grid(trait ~ .)
@@ -148,6 +148,9 @@ fig_nums(name = "covs_var_exp", caption = "Variance of important covariates expl
 covs_var_exp_cap <- fig_nums("covs_var_exp")
 
 # for the table
+sim_res <- dplyr::filter(svs_needed, data == "simulated")
+real_res <- dplyr::filter(svs_needed, data == "real")
+
 sum_res <- rbind(
 sim_res %>% dplyr::filter(max_sv == "not_max") %>%
 	group_by(cov) %>%
