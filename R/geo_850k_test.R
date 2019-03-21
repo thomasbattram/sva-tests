@@ -70,9 +70,11 @@ sv_list <- lapply(n_cpg, function(ncpg) {
 	svobj <- smartsva.cpp(mdat, mod, mod0 = NULL, n.sv = 20)
 	return(svobj)
 })
-save(sv_list, file = "sv_list_850k.RData")
+save(sv_list, file = "data/sv_list_850k.RData")
+load("data/sv_list_850k.RData")
+
 # 850k vs lower 
-ncpg_dat <- as.data.frame(matrix(NA, nrow = length(list_nam), ncol = 21))
+ncpg_dat <- as.data.frame(matrix(NA, nrow = length(sv_list), ncol = 21))
 colnames(ncpg_dat)[1] <- "n_cpg"
 colnames(ncpg_dat)[2:21] <- paste0("sv", 1:20, "_adjr2")
 
@@ -83,7 +85,7 @@ for (i in seq_along(sv_list)) {
 	ncpg <- n_cpg[i]
 	ncpg_dat[i, "n_cpg"] <- ncpg
 	fom <- as.formula(paste0("svs_850[, j] ~ ", paste(paste0("temp_svs[, ", 1:20, "]"), collapse = " + ")))
-	for (j in 1:ncol(svs)) {
+	for (j in 1:ncol(temp_svs)) {
 		fit <- lm(fom)
 		ncpg_dat[i, j+1] <- summary(fit)$adj.r.squared
 	}
