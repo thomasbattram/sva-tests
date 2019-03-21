@@ -1,5 +1,147 @@
-# Assessing the best practice for surrogate variable analysis in epigenome-wide association studies
+---
+title: "Assessing the best practice for surrogate variable analysis in epigenome-wide association studies"
+author: "Thomas Battram1, Matthew Suderman1, Paul Yousefi1, James Staley1"
+output:
+  fig_caption: no
+---
 
-Epigenome-wide association studies (EWAS) examine the association between differences in DNA methylation and a trait of interest. High-throughput experiments are required to measure DNA methylation across thousands or millions of CpG sites in large cohorts. These experiments generate unwanted variation in DNA methylation that is related not to the trait of interest being measured, but instead some batch variable. In order to counteract these batch effects and potentially other unwanted variation, surrogate variables (SVs) can be added as covariates in an EWAS. 
+1MRC Integrative Epidemiology Unit, University of Bristol
 
-Surrogate variable analysis (SVA) is the process of generating these SVs
+```{r setoptions, eval = TRUE, echo = FALSE}
+opts_chunk$set(echo = FALSE, 
+            warning = FALSE, 
+            message = TRUE, 
+            cache = FALSE, 
+            dpi = 300
+            )
+```
+
+```{r call_source}
+read_chunk("~/main_project/ALSPAC_EWAS/knitr_report/Paper.R")
+```
+
+``` {r load_data, results = "hide", message = FALSE, warning = FALSE}
+```
+
+```{r EWAS_setup, results = "hide", message = FALSE, warning = FALSE}
+```  
+
+```{r r2_setup, results = "hide", message = FALSE, warning = FALSE}
+```  
+
+```{r outlier_sensitivity_setup, results= "hide", message = FALSE, warning = FALSE}
+```
+
+```{r alpha_sensitivity_setup, results = "hide", message = FALSE, warning = FALSE}
+``` 
+
+```{r model_comp_setup, results = "hide", message = FALSE, warning = FALSE}
+``` 
+
+```{r results = "hide", message = FALSE, warning = FALSE}
+# figures
+fig_nums(name = "model_comp")
+model_comp_cap <- fig_nums("model_comp")
+fig_nums(name = "comparison")
+comparison_cap <- fig_nums("comparison")
+fig_nums(name = "auc_comparison")
+auc_comparison_cap <- fig_nums("auc_comparison")
+fig_nums(name = "roc_curve")
+roc_curve_cap <- fig_nums("roc_curve")
+fig_nums(name = "m2_hits")
+m2_hits_cap <- fig_nums("m2_hits")
+# tables
+# supplementary figures
+sup_fig_nums(name = "outlier_m2")
+outlier_m2_cap <- sup_fig_nums("outlier_m2")
+sup_fig_nums(name = "outlier_m2_2")
+outlier_m2_2_cap <- sup_fig_nums("outlier_m2_2")
+sup_fig_nums(name = "alpha_m2")
+alpha_m2_cap <- sup_fig_nums("alpha_m2")
+sup_fig_nums(name = "alpha_m2_2")
+alpha_m2_2_cap <- sup_fig_nums("alpha_m2_2")
+# supplementary tables
+sup_table_nums(name = "sens_sum")
+sens_sum_cap <- sup_table_nums("sens_sum")
+```
+
+
+
+## Introduction
+
+Epigenome-wide association studies (EWAS) examine the association between differences in DNA methylation and a trait of interest. High-throughput experiments are required to measure DNA methylation across thousands or millions of CpG sites in large cohorts. These experiments generate unwanted variation in DNA methylation that is related not to the trait of interest being measured, but instead some batch variable. In order to counteract these batch effects and potentially other unwanted variation, surrogate variables (SVs) can be used as covariates in an EWAS. 
+
+Surrogate variable analysis (SVA) was introduced by Leek et al. in 2007 as a method to deal with unwanted variation in gene expression measurement with expression arrays. Since then it has been applied to various different array-based 'omic' measurements including the popular Illumina blah arrays. The computational efficiency has been improved upon by Chen et al. 2017. According to the Chen et al., SmartSVA gives the same SVs as the original SVA, but generates these SVs ten times faster. A further simple method to improve computational efficiency whilst not compromising the SVs produced could be performing SVs on a representative subset of the array.
+
+One major problem that researchers experience with SVA is the number of SVs suggested by the SVA or SmartSVA package. Often this can be so high that including them in a linear model would result in major over-fitting. It may also be very low, suggesting few SVs are needed to account for unwanted variation, when in reality more are needed. This has lead to many researchers simply adjusting for an arbitrary number of SVs such as ten or twenty. 
+
+In this paper we aimed to test the length of time taken to generate SVs using various different parameters, compare the SVs generated and find out how many SVs are needed to account for variation in typical covariates.
+
+## Methods
+
+### Data
+
+#### Simulated data
+Continuous data was simulated using the rnorm() function and binary data was simulated using sample() in R. 
+
+#### Avon Longitudinal Study of Parents and Children (ALSPAC)
+The real data in the study mainly came from one cohort: the Avon Longitudinal Study of Parents and Children (ALSPAC). ALSPAC recruited pregnant women in the Bristol and Avon area, United Kingdom, with an expected delivery date between April 1991 and December 1992 (http://www.bris.ac.uk/alspac/). Over 14,000 pregnancies have been followed up (both children and parents) throughout the life-course. Full details of the cohort has been published previously (Fraser et al. 2013). This study uses phenotypic and DNA methylation data from the mothers (N = `r `).
+
+`r ` continuous traits were extracted from the same timepoint blood was drawn for DNA methylation measurements. A summary of the phenotypes are present in the __Supplementary Material__ and full details of all the data is available through a fully searchable data dictionary: http://www.bris.ac.uk/alspac/researchers/data-access/data-dictionary/
+
+Where data for a trait was missing in >10% individuals, the trait was removed from further analyses. 754 traits were removed leaving `r nrow(ldak_res) - 754` traits left for analyses. These traits do not neccessarily represent independent phenotypes and as such we wanted to prevent correlated traits skewing results. The absolute Pearson's correlation coefficient between each trait was subtracted from one (1 - absolute r). Then traits were greedily selected having 1 - aboslute r < 0.2 with any other trait.
+
+Ethical approval for the study was obtained from the ALSPAC Ethics and Law Committee and from the UK National Health Service Local Research Ethics Committees. Written informed consent was obtained from both the parent/guardian and, after the age of 16, children provided written assent.
+
+#### DNA methylation data
+DNA methylation were measured using the Illumina Infinium HumanMethylation450 (HM450) BeadChip. The data went through quality control and was normalised before use. Full details can be found in the __Supplementary Material__.
+
+DNA methylation data generated from blood collected at a single clinic visit was used for each of the participants. 
+
+Cell proportions (CD8+ and CD4+ T cells, B cells, monocytes, natural killer cells, and granulocytes) were estimated using an algorithm proposed by Houseman et al. (Houseman et al. 2012).
+
+### Surrogate variable analyses
+
+#### Parameters tested
+* SVA package used - between sva and smartsva
+* Number of CpGs - increasing from 20,000 to 300,000 by increments of 20,000 + the full set of CpGs (`r max(params$n_cpg)`)  
+* Number of samples - increasing from 100 to 900 by increments of 100
+* Number of SVs - comparison of 5, 10, 15, 20, 60 SVs
+
+#### SVA package
+Time taken to run the analyses was compared as were the SVs generated by assessing the Pearson's correlation between SVs and how much of the variance of each SV generated using the sva package was explained by the same SV generated using the smartsva package.
+
+We set the number of iterations used by each package to be the same and kept the other parameters as their defaults. 
+ 
+Where unspecified, smartsva was chosen to run analyses.
+
+#### Effectiveness of subsetting CpGs
+Time taken to run the analyses and the SVs generated by subsets of CpGs were compared to the same factors when running the analyses using all CpGs on the 450k array. To compare the SVs we took each of the SVs generated using all CpGs on the 450k array and calculated the variance of each of these SVs explained by all the SVs generated using the subset of CpGs. i.e:
+
+$$SV_i \sim SV_1' + SV_2' + ... + SV_n'$$
+
+where _SV~i~_ is the ith SV generated using all CpGs from the 450k array. 
+
+For the number of SVs and the number of samples we just assessed run time.
+
+#### Number of SVs required
+
+The variance explained of often used covariates in EWAS by SVs was examined. The covariates chosen were: cell proportions derived using the Housemann method, two batch variables (BCD_id and MSA4Plate_id), age, and the top 10 genomic PCs. 
+
+Normally distributed, random continuous and binary variables were used as well as 10 randomly selected, independent (-0.2 < r < 0.2) variables from the FOM1 timepoint.
+
+Firstly, the number of SVs required was estimated using the num.sv() function from the sva package, with the "leek" method and by using random matrix theory as suggested by the smartsva package authors. The highest number of SVs estimated from either method was used as the maximum number of SVs required. 
+
+Then, these SVs were generated for each trait using all of the probes on the 450k array.
+
+Finally, the cumulative variance explained by SVs for each covariate was examined. 
+
+#### Replication and whole genome estimates
+
+Number of CpGs required to generate 20 SVs for an EPIC array dataset was also examined.
+
+Finally we designed a function that suggests how many CpGs should be used given the number of SVs needed and the number of CpGs in total.
+
+
+
+
