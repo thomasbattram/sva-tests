@@ -115,7 +115,7 @@ combinations <- as.data.frame(combn(names(x), 2))
 cols <- seq_along(x[[1]])
 out_mat <- matrix(nrow = ncol(combinations), ncol = length(cols) + 1)
 out_mat <- as.data.frame(out_mat)
-colnames(out_mat) <- c("combination", paste0("sv", ncol - 1))
+colnames(out_mat) <- c("combination", paste0("sv", cols))
 i=1
 for (i in seq_along(combinations)) {
 	num1 <- combinations[1, i]
@@ -136,7 +136,7 @@ time_plot <- ggplot(params, aes(x = alpha, y = time_user, fill = as.factor(B))) 
 
 ggsave("results/default_params_times_test.pdf", time_plot)
 
-
+write.table(params, "results/alpha_tests_params.txt", row.names = F, col.names = T, quote = F, sep = "\t")
 
 
 
