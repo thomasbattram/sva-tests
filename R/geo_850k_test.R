@@ -70,7 +70,7 @@ sv_list <- lapply(n_cpg, function(ncpg) {
 	svobj <- smartsva.cpp(mdat, mod, mod0 = NULL, n.sv = 20)
 	return(svobj)
 })
-
+save(sv_list, file = "sv_list_850k.RData")
 # 850k vs lower 
 ncpg_dat <- as.data.frame(matrix(NA, nrow = length(list_nam), ncol = 21))
 colnames(ncpg_dat)[1] <- "n_cpg"
