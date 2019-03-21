@@ -86,7 +86,7 @@ if (exists("params_2")) {
 # ---------------------------------------------------------------
 # run analyses
 # ---------------------------------------------------------------
-i=1
+i=120
 for (i in 1:nrow(params)) {
 	print(i)
 	if (!is.na(params[i, "time_user"])) {
@@ -130,7 +130,7 @@ for (i in 1:nrow(params)) {
 	params[i, "time_system"] <- tim[2]
 	params[i, "time_elapsed"] <- tim[3]
 
-	if (nsv != max(params$n_sv) {
+	if (nsv != max(params$n_sv)) {
 		next
 	} else {
 	## sv_list names follow this order: DT_NSV_SVTYPE_NCPG_NSAMP
