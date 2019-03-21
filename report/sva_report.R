@@ -7,20 +7,24 @@ lapply(pkgs, require, character.only = TRUE)
 
 devtools::load_all("~/repos/usefunc")
 
-# NEED TO SAVE MORE ANALYSIS RESULTS!!!!
-
 # params tables
 params <- read_delim("~/sva_tests/results/sv_test_params_sims.txt", delim = "\t")
+alp_params <- read_delim("~/sva_tests/results/alpha_tests_params.txt", delim = "\t")
 
 # sva vs smart sva
 smart_v_normal <- read_delim("~/sva_tests/results/smartsva_v_sva_sims.txt", delim = "\t")
-# smart_v_normal_mv <- read_delim("~/sva_tests/results/smartsva_v_sva_simsmost_var.txt", delim = "\t")
+
+# test of default smartsva parameters
+alpha_tests <- read_delim("~/sva_tests/results/alpha_tests.txt", delim = "\t")
 
 # ncpg with 20 svs
 ncpg_dat_20 <- read_delim("~/sva_tests/results/ncpg_comp_sims.txt", delim = "\t")
 
 # ncpg with 10 svs
 ncpg_dat_10 <- read_delim("~/sva_tests/results/ncpg_comp_10_sims.txt", delim = "\t")
+
+# ncpg with 20 svs using EPIC array 
+ncpg_dat_850k <- read_delim("~/sva_tests/results/ncpg_comp_sims_850.txt", delim = "\t")
 
 # mv and rand ncpg dat 
 mv_vs_rand <- read_delim("~/sva_tests/results/mv_v_rand_ncpg_comp_10_sims.txt", delim = "\t")
@@ -36,6 +40,7 @@ table_nums <- captioner(prefix = "Table")
 fig_nums <- captioner()
 
 ## ---- timings_setup -----------------------------------
+# How does time taken vary with CpG num, SVA package and sample number
 cont_params <- params %>%
 	dplyr::filter(dat_type == "continuous") %>%
 	dplyr::filter(n_sv == max(n_sv))
@@ -48,6 +53,7 @@ time_plot <- ggplot(cont_params, aes(x = n_cpg, y = time_user, colour = as.facto
 fig_nums(name = "time_plot", caption = "How does time taken to perform SVA vary with sample number, SVA package and CpG number?")
 time_plot_cap <- fig_nums("time_plot")
 
+# smartsva package vs sva package correlation
 colnames(smart_v_normal) <- c("SV", "correlation", bquote("adjusted r"^"2"))
 
 smsva_times <- params[params$sv_type == "smartsva", "time_user", drop = T]
@@ -56,6 +62,7 @@ sva_times <- params[params$sv_type == "sva", "time_user", drop = T]
 table_nums(name = "smart_v_normal", caption = "What is the correlation between SVs generated using the two different packages?")
 smart_v_normal_cap <- table_nums("smart_v_normal")
 
+# how does time taken vary with number of SVs and distribution of phenotype
 sv_dat_type_params <- params %>%
 	dplyr::filter(n_sample == max(n_sample)) %>%
 	dplyr::filter(sv_type == "smartsva")
@@ -65,8 +72,16 @@ sv_dat_type_plot <- ggplot(sv_dat_type_params, aes(x = n_cpg, y = time_user, col
 	geom_line(aes(linetype = dat_type)) +
 	scale_colour_discrete(name = "n_sv")
 
-fig_nums(name = "time_plot2", caption = "How does time taken to perform SVA vary with number of SVs and distribution of data (continuous or binary)?")
+fig_nums(name = "time_plot2", caption = "How does time taken to perform SVA vary with number of SVs and distribution of phenotype (continuous or binary)?")
 time_plot2_cap <- fig_nums("time_plot2")
+
+# comparison of smartsva parameters --> smartsva defaults vs. sva package defaults
+model_param_comp <- ggplot(alp_params, aes(x = alpha, y = time_user, fill = as.factor(B))) +
+	geom_bar(stat = "identity", position = "dodge") +
+	facet_grid(. ~ as.factor(n_sv))
+
+fig_nums(name = "model_param_time_plot", caption = "How does time taken to perform SVA vary with alpha and B values?")
+model_param_time_plot_cap <- fig_nums("model_param_time_plot")
 
 ## ---- time_plot -----------------------------------
 print(time_plot)
@@ -77,8 +92,11 @@ pander(smart_v_normal)
 ## ---- time_plot2 -----------------------------------
 print(sv_dat_type_plot)
 
-## ---- ncpg_setup -----------------------------------
+## ---- model_param_time_plot -----------------------------------
+print(model_param_comp)
 
+## ---- ncpg_setup -----------------------------------
+# subsetting data to most variable CpGs or a random subset
 plot_res <- mv_vs_rand %>%
 	gather(key = sv, value = adj_r2, -n_cpg, -cpg_subset)
 plot_res$sv <- gsub("_adjr2", "", plot_res$sv)
@@ -98,6 +116,7 @@ mv_vs_random_plot <- ggplot(mv_vs_random_plot_res, aes(x = reorder(as.numeric(sv
 fig_nums(name = "mv_vs_random_plot", caption = "Is it better to subset the number of CpGs randomly or by most variable CpGs when running SVA?")
 mv_vs_random_plot_cap <- fig_nums("mv_vs_random_plot")
 
+# variance of SVs created using all CpGs explained by SVs created using a subset
 plot_res <- ncpg_dat_20 %>%
 	gather(key = sv, value = adj_r2, -n_cpg)
 plot_res$sv <- gsub("_adjr2", "", plot_res$sv)
@@ -111,14 +130,32 @@ ncpg_plot <- ggplot(plot_res, aes(x = n_cpg, y = adj_r2, colour = reorder(as.num
 fig_nums(name = "ncpg_plot", caption = "Variance captured of SVs made using 450k CpGs by all SVs made using random subsets of varying numbers of CpGs")
 ncpg_plot_cap <- fig_nums("ncpg_plot")
 
+# now using an EPIC array dataset! 
+plot_res <- ncpg_dat_850k %>%
+	gather(key = sv, value = adj_r2, -n_cpg)
+plot_res$sv <- gsub("_adjr2", "", plot_res$sv)
+plot_res$sv <- gsub("sv", "", plot_res$sv)
+
+# plot it!
+ncpg_plot_850k <- ggplot(plot_res, aes(x = n_cpg, y = adj_r2, colour = reorder(sv, sort(as.numeric(sv))))) +
+	geom_line() +
+	geom_point() +
+	scale_colour_discrete(name = "SV")
+
+fig_nums(name = "ncpg_plot_850k", caption = "Variance captured of SVs made using EPIC array CpGs by all SVs made using random subsets of varying numbers of CpGs")
+ncpg_plot_850k_cap <- fig_nums("ncpg_plot_850k")
+
 ## ---- mv_vs_random -----------------------------------
 print(mv_vs_random_plot)
 
 ## ---- ncpg_plot -----------------------------------
 print(ncpg_plot)
 
-## ---- nsv_setup -----------------------------------
+## ---- ncpg_plot_850k -----------------------------------
+print(ncpg_plot_850k)
 
+## ---- nsv_setup -----------------------------------
+# Comparison of rmt and num.sv() number of SVs estimated
 g_estimated_num <- gather(estimated_num, key = "method", value = "nsv", -ncpg, -nsamp) %>%
 	mutate(method = gsub("_nsv", "", method))
 
@@ -130,7 +167,8 @@ est_num_plot <- ggplot(g_estimated_num, aes(x = ncpg, y = nsv, colour = as.facto
 fig_nums(name = "est_num_plot", caption = "Number of SVs required estimated using num.sv() and random matrix theory")
 est_num_plot_cap <- fig_nums("est_num_plot")
 
-# take just two plots 
+# variance of common EWAS covariates explained by SVs
+# take just two traits
 sm_sva_res_list <- sva_res_list[grep("Glucose|rcont", names(sva_res_list))]
 
 sva_plot_res <- do.call(rbind, sm_sva_res_list) %>%
@@ -142,7 +180,8 @@ sva_plot_res <- do.call(rbind, sm_sva_res_list) %>%
 covs_r2_p <- ggplot(sva_plot_res, aes(x = as.numeric(sv), y = adjusted_r2, colour = covariate, group = covariate)) +
 	geom_point() +
 	geom_line() +
-	facet_grid(trait ~ .)
+	labs(x = "SV") +
+	facet_grid(trait ~ .) 
 
 fig_nums(name = "covs_var_exp", caption = "Variance of important covariates explained by SVs")
 covs_var_exp_cap <- fig_nums("covs_var_exp")

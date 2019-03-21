@@ -90,6 +90,9 @@ We also designed a function that suggests how many CpGs should be used given the
 ```{r time_plot2, results = "asis", message = FALSE, echo = FALSE, warning = FALSE, fig.cap = time_plot2_cap}
 ```
 
+```{r model_param_time_plot, results = "asis", message = FALSE, echo = FALSE, warning = FALSE, fig.cap = model_param_time_plot_cap}
+```
+
 ### Smart vs normal sva
 
 ```{r sva_vs_smart_sva_table, results = "asis", message = FALSE, echo = FALSE, warning = FALSE, fig.cap = smart_v_normal_cap}
@@ -106,6 +109,9 @@ adjusted r^2^ = The variance of the SV generated using the sva package explained
 Number of CpGs is set to 20,000
 
 ```{r ncpg_plot, results = "asis", message = FALSE, echo = FALSE, warning = FALSE, fig.cap = ncpg_plot_cap}
+```
+
+```{r ncpg_plot_850k, results = "asis", message = FALSE, echo = FALSE, warning = FALSE, fig.cap = ncpg_plot_850k_cap}
 ```
 
 ### Variance explained of covariates by SVs
@@ -138,8 +144,9 @@ these medians are split by whether the data is simulated or real.
 * Using all 20 SVs generated using a random subset of 20000 CpGs we explained over 90% of variance for the first 17 SVs generated using all `r max(params$n_cpg)` CpGs and over 99% of variance for the first 8 SVs
 * The num.sv() function with the "leek" method estimates far fewer SVs required than is estimated using random matrix theory
 * Many SVs may be needed to explain a large proportion of some key covariates such as cell type and batch variables
-* SVs explain very little of the variance of genomic PCs (in this sample)
-
+* SVs explain very little of the variance of genomic PCs (in this sample) -- makes sense
+* There is very little difference between the SVs produced using smartsva when using default parameters compared to the default parameters for sva 
+* When looking at subsetting the number of CpGs the proporotion needed for an 850k dataset seems larger than that from the 450k dataset...
 
 
 
