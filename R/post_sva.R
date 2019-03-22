@@ -38,7 +38,7 @@ length(sv_list)
 
 all_sv_cont_params <- params %>%
 	dplyr::filter(dat_type == "continuous") %>% 
-	dplyr::filter(n_sv == max(n_sv))
+	dplyr::filter(n_sv == 20)
 
 time_plot <- ggplot(all_sv_cont_params, aes(x = n_cpg, y = time_user, colour = as.factor(n_sample))) +
 	geom_line(aes(linetype = sv_type)) +
@@ -79,11 +79,11 @@ cor(bin, cont) # 0.9982354
 n_cpg <- max(params$n_cpg)
 dat_type <- "continuous"
 n_sample <- max(params$n_sample)
-n_sv <- max(params$n_sv)
+n_sv <- 20
 
 ## sv_list names follow this order: DT_NSV_SVTYPE_NCPG_NSAMP
 list_nam <- with(params, paste("con",
-				 max(n_sv), 
+				 20, 
 				 unique(sv_type), 
 				 paste0(round(max(n_cpg)/1000), "k"), 
 				 max(n_sample), 
@@ -107,7 +107,7 @@ write.table(smart_v_normal, file = paste0("results/smartsva_v_sva_sims", mnam, "
 
 # 450k vs lower 
 list_nam <- with(params, paste("con",
-				 max(n_sv), 
+				 20, 
 				 "smartsva", 
 				 paste0(round(unique(n_cpg)/1000), "k"), 
 				 max(n_sample), 
@@ -185,6 +185,48 @@ ncpg_plot_10svs <- ggplot(plot_res, aes(x = n_cpg, y = adj_r2, colour = reorder(
 	scale_colour_discrete(name = "SV")
 
 write.table(ncpg_dat, file = paste0("results/ncpg_comp_10_sims", mnam, ".txt"), quote = F, row.names = F, col.names = T, sep = "\t")
+
+# 450k vs lower using 60 SVs
+list_nam <- with(params, paste("con",
+				 60, 
+				 "smartsva", 
+				 paste0(round(unique(n_cpg)/1000), "k"), 
+				 max(n_sample), 
+				 sep = "_"))
+
+ncpg_dat <- as.data.frame(matrix(NA, nrow = length(list_nam), ncol = 61))
+colnames(ncpg_dat)[1] <- "n_cpg"
+colnames(ncpg_dat)[2:61] <- paste0("sv", 1:60, "_adjr2")
+
+smsva_450 <- sv_list[[list_nam[grep("483k", list_nam)]]]
+svs_450 <- smsva_450$sv
+i=1
+for (i in 1:length(list_nam)) {
+	temp_svs <- sv_list[[list_nam[i]]]$sv
+	ncpg <- str_split(list_nam[i], "_")[[1]][4]
+	ncpg <- as.numeric(gsub("k", "", ncpg)) * 1000
+	ncpg_dat[i, "n_cpg"] <- ncpg
+	fom <- as.formula(paste0("svs_450[, j] ~ ", paste(paste0("temp_svs[, ", 1:60, "]"), collapse = " + ")))
+	for (j in 1:ncol(svs_450)) {
+		fit <- lm(fom)
+		ncpg_dat[i, j+1] <- summary(fit)$adj.r.squared
+	}
+}
+### issue with overfitting?
+plot_res <- ncpg_dat %>%
+	gather(key = sv, value = adj_r2, -n_cpg)
+plot_res$sv <- gsub("_adjr2", "", plot_res$sv)
+plot_res$sv <- gsub("sv", "", plot_res$sv)
+
+# plot it!
+ncpg_plot <- ggplot(plot_res, aes(x = n_cpg, y = adj_r2, colour = reorder(sv, sort(as.numeric(sv))))) +
+	geom_line() +
+	geom_point() +
+	scale_colour_discrete(name = "SV")
+
+write.table(ncpg_dat, file = paste0("results/ncpg_comp_60_sims", mnam, ".txt"), quote = F, row.names = F, col.names = T, sep = "\t")
+
+
 
 ## Taking most variable CpGs 
 ncpg_dat <- as.data.frame(matrix(NA, nrow = length(list_nam), ncol = 11))
