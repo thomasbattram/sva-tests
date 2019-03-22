@@ -17,29 +17,27 @@ opts_chunk$set(echo = FALSE,
 ```
 
 ```{r call_source}
-read_chunk("~/main_project/ALSPAC_EWAS/knitr_report/Paper.R")
+read_chunk("~/sva_tests/report/sva_paper.R")
 ```
 
 ``` {r load_data, results = "hide", message = FALSE, warning = FALSE}
 ```
 
-```{r EWAS_setup, results = "hide", message = FALSE, warning = FALSE}
+```{r timings_setup, results = "hide", message = FALSE, warning = FALSE}
 ```  
 
-```{r r2_setup, results = "hide", message = FALSE, warning = FALSE}
+```{r ncpg_setup, results = "hide", message = FALSE, warning = FALSE}
 ```  
 
-```{r outlier_sensitivity_setup, results= "hide", message = FALSE, warning = FALSE}
-```
-
-```{r alpha_sensitivity_setup, results = "hide", message = FALSE, warning = FALSE}
-``` 
-
-```{r model_comp_setup, results = "hide", message = FALSE, warning = FALSE}
-``` 
+```{r nsv_setup, results = "hide", message = FALSE, warning = FALSE}
+```  
 
 ```{r results = "hide", message = FALSE, warning = FALSE}
+
 # figures
+fig_nums(name = "time_plot")
+time_plot_cap <- fig_nums("time_plot")
+
 fig_nums(name = "model_comp")
 model_comp_cap <- fig_nums("model_comp")
 fig_nums(name = "comparison")
@@ -142,6 +140,35 @@ Number of CpGs required to generate 20 SVs for an EPIC array dataset was also ex
 
 Finally we designed a function that suggests how many CpGs should be used given the number of SVs needed and the number of CpGs in total.
 
+#### Analysis
+All analyses were done using R (XX), with the SmartSVA and SVA packages.
 
+## Results
+The correlation between each of 20 SVs produced by the SmartSVA and SVA package was 1 or -1 (__`r sup_table_nums("", display = "cite")`__) and the time taken by SmartSVA was on average X times faster (__`r fig_nums("", display = "cite")`__). 
 
+INSERT FIGURE HERE
 
+The time taken to produce 20 SVs increased with number of samples and CpGs used to create the SVs (__`r fig_nums("", display = "cite")`__). However, the number of SVs created and whether the phenotype distribution was binary or continuous didn't effect the time very much (__`r sup_fig_nums("", display = "cite")`__).
+
+INSERT FIGURE HERE
+
+When subsetting the 450k array, the number of CpGs required to accurately estimate SVs was examined. When producing 20 SVs, over 95% of the variance of SV 1-10 produced using the entire array was explained by all 20 SVs produced using a random subset of X CpGs. As the SV number increased, the variance explained by all SVs estimated from a subset of CpGs decreased (__`r fig_nums("", display = "cite")`__). To explain over 95% of variance of all SVs, X CpGs were required. When assessing just the first 10 SVs, X CpGs were required. Subsetting to the most variable CpGs produced SVs that explained less of the variance than to random CpGs (__`r sup_fig_nums("", display = "cite")`__).
+
+Using a dataset with X CpGs we found similar results
+
+INSERT FIGURE HERE
+
+The num.sv() function from the SVA package estimated fewer SVs for each of the X phenotypes tested, with a median of X fewer, compared to estimates using random matrix theory (__`r sup_fig_nums("", display = "cite")`__). 
+
+The variance explained of various common EWAS covariates by the number of SVs estimated by random matrix theory varied substantially (__`r fig_nums("", display = "cite")`__). As more SVs were added into the model, less additional variance was explained. For the 10 genomic PCs, the all the SVs explained nearly none of the variance, but for the other covariates, a varying amount of variance was explained, which was fairly consistent across all the real and simulated traits assessed (__`r sup_fig_nums("", display = "cite")`__). The variance explained by 10, 20, 30 and the total number of SVs for each covariate for a simulated continuous trait and a real trait are shown in __`r table_nums("", display = "cite")`__.
+
+INSERT FIGURE HERE
+
+INSERT TABLE HERE
+
+## Discussion
+Surrogate variable analyses has been shown to adequately control for unwanted variation in EWAS. However, a method to conduct SVA that increases computational efficiency, whilst maintaining the desired SV function is needed as datasets increase in size. Here we demonstrate that by randomly subsetting the number of CpGs to X% of the number of CpGs used for the analyses to calculate 20 SVs using the SmartSVA package, the time taken decreases by X-fold, compared to using the full set of CpGs and the SVA package, whilst maintaing SV functionality.
+
+   
+
+How does time taken to perform SVA vary with sample number, SVA package and CpG number?

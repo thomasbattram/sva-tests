@@ -38,6 +38,8 @@ svs_needed <- read_delim("~/sva_tests/results/svs_needed.txt", delim = "\t")
 # Captioner setup
 table_nums <- captioner(prefix = "Table")
 fig_nums <- captioner()
+sup_table_nums <- captioner(prefix = "Supplementary Table")
+sup_figure_nums <- captioner(prefix = "Supplementary Figure")
 
 ## ---- timings_setup -----------------------------------
 # How does time taken vary with CpG num, SVA package and sample number
