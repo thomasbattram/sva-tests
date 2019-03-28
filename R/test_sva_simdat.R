@@ -76,10 +76,17 @@ if (exists("params_2")) {
 		full_join(params_2) %>%
 		arrange(time_user) # arranges it so that the NAs are at the bottom - good for sv_list later
 	
-	params <- temp
+	temp2 <- temp %>%
+		dplyr::select(-time_user, -time_elapsed, -time_system)
+
+	dup_rows <- duplicated(temp2)
+	
+	params <- temp[!dup_rows,]
 } else {
 	sv_list <- list()
 }
+
+
 
 # ---------------------------------------------------------------
 # run analyses
