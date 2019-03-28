@@ -234,7 +234,7 @@ median_sv_max = median number of SVs estimated to be required across traits,
 these medians are split by whether the data is simulated or real. 
 
 ### Summary of findings
-* smartsva was on average 4.2 times faster than sva
+* smartsva was on average NaN times faster than sva
 * There was no difference between the SVs generated using the different packages
 * As number of samples increased and number of CpGs increased so did time taken to run SVA
 * Little difference in time taken when using 5, 10, 15, or 20 SVs 
@@ -246,8 +246,7 @@ these medians are split by whether the data is simulated or real.
 * Many SVs may be needed to explain a large proportion of some key covariates such as cell type and batch variables
 * SVs explain very little of the variance of genomic PCs (in this sample) -- makes sense
 * There is very little difference between the SVs produced using smartsva when using default parameters compared to the default parameters for sva 
-* When looking at subsetting the number of CpGs it seems as though the proportion of CpGs needed to produce SVs that are similar to SVs produced using all the CpGs is the same across the 450k and EPIC arrays.
-
+* When looking at subsetting the number of CpGs the proporotion needed for an 850k dataset seems larger than that from the 450k dataset...
 
 
 

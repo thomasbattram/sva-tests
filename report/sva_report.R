@@ -45,12 +45,13 @@ sup_figure_nums <- captioner(prefix = "Supplementary Figure")
 # How does time taken vary with CpG num, SVA package and sample number
 cont_params <- params %>%
 	dplyr::filter(dat_type == "continuous") %>%
-	dplyr::filter(n_sv == max(n_sv))
+	dplyr::filter(n_sv == 20)
 
-time_plot <- ggplot(cont_params, aes(x = n_cpg, y = time_user, colour = as.factor(n_sample))) +
-	geom_line(aes(linetype = sv_type)) +
-	geom_point() +
-	scale_colour_discrete(name = "n_sample")
+time_plot <- ggplot(cont_params, aes(x = n_cpg, y = time_user, colour = as.factor(n_sample),
+									 group = as.factor(n_sample))) +
+								 geom_line() +
+								 geom_point() +
+								 scale_colour_discrete(name = "n_sample")
 
 fig_nums(name = "time_plot", caption = "How does time taken to perform SVA vary with sample number, SVA package and CpG number?")
 time_plot_cap <- fig_nums("time_plot")

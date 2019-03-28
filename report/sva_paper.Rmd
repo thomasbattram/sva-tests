@@ -144,9 +144,7 @@ Finally we designed a function that suggests how many CpGs should be used given 
 All analyses were done using R (XX), with the SmartSVA and SVA packages.
 
 ## Results
-The correlation between each of 20 SVs produced by the SmartSVA and SVA package was 1 or -1 (__`r sup_table_nums("", display = "cite")`__) and the time taken by SmartSVA was on average X times faster (__`r fig_nums("", display = "cite")`__). 
-
-INSERT FIGURE HERE
+The correlation between each of 20 SVs produced by the SmartSVA and SVA package was 1 or -1 (__`r sup_table_nums("", display = "cite")`__) and the time taken by SmartSVA was on average X times faster. 
 
 The time taken to produce 20 SVs increased with number of samples and CpGs used to create the SVs (__`r fig_nums("", display = "cite")`__). However, the number of SVs created and whether the phenotype distribution was binary or continuous didn't effect the time very much (__`r sup_fig_nums("", display = "cite")`__).
 
