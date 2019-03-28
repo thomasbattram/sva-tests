@@ -54,12 +54,11 @@ if (file.exists(file)) {
 # ---------------------------------------------------------------
 # set up parameters to be tested
 # ---------------------------------------------------------------
-n_sv <- seq(5, 60, 5)
+n_sv <- seq(5, 20, 5)
 sv_type <- c("sva", "smartsva")
 sv_type <- sv_type[2]
 n_cpg <- c(seq(20000, 300000, 20000), nrow(mdata))
 n_samp <- c(seq(100, ncol(mdata), by = 100))
-n_samp <- max(n_samp)
 dat_type <- c("binary", "continuous")
 dat_type <- dat_type[2]
 params <- expand.grid(n_sv = n_sv, sv_type = sv_type, n_cpg = n_cpg, dat_type = dat_type, n_sample = n_samp)
@@ -74,8 +73,7 @@ phen <- data.frame(binary = bin, continuous = cont)
 
 if (exists("params_2")) {
 	temp <- params %>%
-		dplyr::select(-time_user, -time_system, -time_elapsed) %>%
-		left_join(params_2) %>%
+		full_join(params_2) %>%
 		arrange(time_user) # arranges it so that the NAs are at the bottom - good for sv_list later
 	
 	params <- temp
@@ -86,7 +84,7 @@ if (exists("params_2")) {
 # ---------------------------------------------------------------
 # run analyses
 # ---------------------------------------------------------------
-i=120
+
 for (i in 1:nrow(params)) {
 	print(i)
 	if (!is.na(params[i, "time_user"])) {
