@@ -54,13 +54,11 @@ if (file.exists(file)) {
 # ---------------------------------------------------------------
 # set up parameters to be tested
 # ---------------------------------------------------------------
-n_sv <- seq(5, 20, 5)
+n_sv <- seq(5, 60, 5)
 sv_type <- c("sva", "smartsva")
-sv_type <- sv_type[2]
 n_cpg <- c(seq(20000, 300000, 20000), nrow(mdata))
 n_samp <- c(seq(100, ncol(mdata), by = 100))
 dat_type <- c("binary", "continuous")
-dat_type <- dat_type[2]
 params <- expand.grid(n_sv = n_sv, sv_type = sv_type, n_cpg = n_cpg, dat_type = dat_type, n_sample = n_samp)
 params$time_user <- NA
 params$time_system <- NA
@@ -71,13 +69,32 @@ table(bin)
 cont <- rnorm(ncol(mdata))
 phen <- data.frame(binary = bin, continuous = cont)
 
+
+params <- params %>%
+	mutate(include = case_when(sv_type == "smartsva" &
+							   dat_type == "continuous" &
+							   n_sv < 21 ~ TRUE, 
+							   sv_type == "sva" & 
+							   n_cpg == max(n_cpg) &
+							   n_sample == max(n_sample) &
+							   n_sv < 21 ~ TRUE, 
+							   sv_type == "smartsva" &
+							   dat_type == "binary" &
+							   n_cpg == max(n_cpg) &
+							   n_sample == max(n_sample) & 
+							   n_sv < 21 ~ TRUE, 
+							   sv_type == "smartsva" &
+							   dat_type == "continuous" &
+							   n_sample == max(n_sample) ~ TRUE)) %>%
+	dplyr::filter(include == TRUE)
+
 if (exists("params_2")) {
 	temp <- params %>%
 		full_join(params_2) %>%
 		arrange(time_user) # arranges it so that the NAs are at the bottom - good for sv_list later
 	
 	temp2 <- temp %>%
-		dplyr::select(-time_user, -time_elapsed, -time_system)
+		dplyr::select(-time_user, -time_elapsed, -time_system, -include)
 
 	dup_rows <- duplicated(temp2)
 	
@@ -85,8 +102,6 @@ if (exists("params_2")) {
 } else {
 	sv_list <- list()
 }
-
-
 
 # ---------------------------------------------------------------
 # run analyses
@@ -139,7 +154,7 @@ for (i in 1:nrow(params)) {
 		next
 	} else {
 	## sv_list names follow this order: DT_NSV_SVTYPE_NCPG_NSAMP
-	## --- need to shorten some of them
+	## --- need to shorted some of them
 		dt <- substr(dt, 1, 3)
 		ncpg <- paste0(round(ncpg/1000), "k")
 		nam <- paste(dt, nsv, svtype, ncpg, nsamp, sep = "_")
