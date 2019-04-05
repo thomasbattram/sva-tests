@@ -274,6 +274,6 @@ rand_v_mv_plot <- ggplot(plot_res, aes(x = n_cpg, y = adj_r2, colour = reorder(s
 
 # final plots to summarise it!
 pdf(paste0("results/sv_plots", mnam, ".pdf"))
-marrangeGrob(list(time_plot, sv_time_plot, ncpg_plot, ncpg_plot_10svs, rand_v_mv_plot), ncol = 1, nrow = 1)
+marrangeGrob(list(time_plot, sv_time_plot, ncpg_plot, ncpg_plot_10svs), ncol = 1, nrow = 1)
 dev.off()
 
