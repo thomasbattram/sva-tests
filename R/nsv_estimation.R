@@ -173,7 +173,8 @@ df <- df %>%
 	left_join(real_dat)
 
 traits <- colnames(df)[-grep("aln", colnames(df))]
-nsv_dat <- data.frame(trait = traits, rmt = NA, leek_nsv = NA)
+nsv_dat <- data.frame(trait = traits, rmt = NA, leek_nsv = NA, 
+					  rmt_cc = NA, leek_nsv_cc = NA)
 
 df <- df %>%
 	left_join(pheno, by = c("aln" = "ALN"))
@@ -182,8 +183,11 @@ covs <- colnames(pheno)[-c(1, 2)]
 # removing slide becuase it has too many unique values (~380...) 
 # + removing BCD_plate because it doesn't work when trying to figure out number of SVs needed...
 covs <- covs[-grep(c("Slide|BCD_plate"), covs)]
+cc <- covs[1:6]
+
 
 # temp_mdata <- mdata[sample(1:nrow(mdata), 2000), comp_df$Sample_Name]
+i=2
 for (i in 1:nrow(nsv_dat)) {
 	print(i)
 	temp_trait <- as.character(nsv_dat[i, "trait"])
@@ -197,10 +201,19 @@ for (i in 1:nrow(nsv_dat)) {
 	nsv_dat[i, "rmt"] <- tryCatch({est_nsv(temp_mdata, temp_trait, temp_df)}, 
 						 error = function(e) {err_msg(e)})
 
+	nsv_dat[i, "rmt_cc"] <- tryCatch({est_nsv(temp_mdata, c(temp_trait, cc), temp_df)}, 
+						 	error = function(e) {err_msg(e)})
+
 	fom <- as.formula(paste("~", paste(temp_trait, collapse = " + ")))
 	mod <- model.matrix(fom, data=temp_df)
 	nsv_dat[i, "leek_nsv"] <- tryCatch({num.sv(temp_mdata, mod, method = "leek")}, 
 						  error = function(e) {err_msg(e)})
+
+	fom <- as.formula(paste("~", paste(c(temp_trait, cc), collapse = " + ")))
+	mod <- model.matrix(fom, data=temp_df)
+	nsv_dat[i, "leek_nsv_cc"] <- tryCatch({num.sv(temp_mdata, mod, method = "leek")}, 
+						  error = function(e) {err_msg(e)})
+
 
 }
 
@@ -208,9 +221,9 @@ write.table(nsv_dat, "data/estimated_sv_num.txt", col.names = T, row.names = F, 
 
 
 # generate the SVs
-sva_list <- vector(mode = "list", length = length(traits))
-names(sva_list) <- traits
-i=1
+sva_list <- vector(mode = "list", length = length(traits)*2)
+names(sva_list) <- c(traits, paste0(traits, "_cc"))
+i=2
 for (i in 1:length(traits)) {
 	trait <- traits[i]
 	
@@ -220,15 +233,26 @@ for (i in 1:length(traits)) {
 
 	temp_mdata <- mdata[, temp_df$Sample_Name]
 	fom <- as.formula(paste0(" ~ ", trait))
-	# fom0 <- as.formula(paste0(" ~ ",))
 	mod <- model.matrix(fom, data = temp_df)
-	# mod0 <- model.matrix(fom0, data = temp_df)
 
-	nsv <- max(unlist(nsv_dat[nsv_dat$trait == trait, c(2,3), drop = T]))
-
-	svobj <- tryCatch({smartsva.cpp(temp_mdata, mod, mod0=NULL, n.sv = nsv)},
+	svobj <- tryCatch({smartsva.cpp(temp_mdata, mod, mod0=NULL, n.sv = 60)},
 								   error = function(e) {err_msg(e = e, return = NULL)})
 	if (!is.null(svobj)) sva_list[[trait]] <- svobj
+
+	# now with cell counts included
+	fom <- as.formula(paste0(" ~ ", paste(c(trait, cc), collapse = "+")))
+	mod <- model.matrix(fom, data = temp_df)
+
+	fom0 <- as.formula(paste0(" ~ ", paste(cc, collapse = "+")))
+	mod0 <- model.matrix(fom0, data = temp_df)
+
+	svobj <- tryCatch({smartsva.cpp(temp_mdata, mod, mod0=mod0, n.sv = 60)},
+								   error = function(e) {err_msg(e = e, return = NULL)})
+	if (!is.null(svobj)) sva_list[[paste0(trait, "_cc")]] <- svobj
+
+
+	# nsv <- max(unlist(nsv_dat[nsv_dat$trait == trait, c(2,3), drop = T]))
+
 }
 
 # test the SVs
@@ -259,14 +283,37 @@ for (i in traits) {
 		dplyr::select(sv, everything())
 
 	sva_res_list[[i]] <- res
+
+	svs <- sva_list[[paste0(i, "_cc")]]$sv
+	if (is.null(svs)) next
+	sva_temp <- as.data.frame(matrix(NA, nrow = length(covs) - length(cc), ncol = ncol(svs) + 1))
+	colnames(sva_temp) <- c("covariate", paste0("sv", 1:ncol(svs)))
+	sva_temp$covariate <- covs[!covs %in% cc]
+
+	res_list <- list()
+	for (j in 1:ncol(svs)) {
+		print(j)
+		temp_svs <- as.data.frame(svs[, 1:j, drop = F])
+		
+		res_list[[j]] <- apply(temp_df[, covs[!covs %in% cc]], 2, function(x) {summary(lm(x ~ ., data = temp_svs))$adj.r.squared})
+		
+	}
+	res_cc <- as.data.frame(do.call(rbind, res_list)) %>%
+		mutate(sv = as.factor(1:nrow(.))) %>%
+		dplyr::select(sv, everything())
+
+	sva_res_list[[paste0(i, "_cc")]] <- res_cc
+
 }
 
 save(sva_res_list, file = "data/cov_r2_res.RData")
 
 # plot it all! 
 plot_list <- list()
+i=names(sva_res_list)[1]
 for (i in names(sva_res_list)) {
-	g_res <- gather(sva_res_list[[i]], key = "covariate", value = "adjusted_r2", -sv)
+	g_res <- gather(sva_res_list[[i]], key = "covariate", value = "adjusted_r2", -sv) %>%
+		dplyr::filter(!grepl("PC[0-9]", covariate))
 	plot_list[[i]] <- ggplot(g_res, aes(x = sv, y = adjusted_r2, colour = covariate, group = covariate)) +
 		geom_point() + 
 		geom_line() + 
@@ -279,19 +326,38 @@ dev.off()
 
 # just 2 of the phenotypes
 sm_sva_res_list <- sva_res_list[grep("Glucose|rcont", names(sva_res_list))]
+sm_sva_res_list_cc <- sm_sva_res_list[grep("_cc", names(sm_sva_res_list))]
+sm_sva_res_list <- sm_sva_res_list[-grep("_cc", names(sm_sva_res_list))]
 
 sva_plot_res <- do.call(rbind, sm_sva_res_list) %>%
 	rownames_to_column(var = "trait") %>%
 	mutate(trait = gsub("\\..*", "", trait)) %>%
 	mutate(trait = ifelse(grepl("Glucose", trait), "glc", trait)) %>%
-	gather(key = "covariate", value = "adjusted_r2", -sv, -trait)
+	gather(key = "covariate", value = "adjusted_r2", -sv, -trait) %>%
+	dplyr::filter(!grepl("PC[0-9]", covariate))
 
-p <- ggplot(sva_plot_res, aes(x = sv, y = adjusted_r2, colour = covariate, group = covariate)) +
+p <- ggplot(sva_plot_res, aes(x = as.numeric(sv), y = adjusted_r2, colour = covariate, group = covariate)) +
 	geom_point() +
 	geom_line() +
+	facet_grid(. ~ trait)
+
+ggsave("results/two_traits_covs_variance_explained.pdf", plot = p, width = 15, height = 10, units = "in")
+
+sva_plot_res_cc <- do.call(rbind, sm_sva_res_list_cc) %>%
+	rownames_to_column(var = "trait") %>%
+	mutate(trait = gsub("\\..*", "", trait)) %>%
+	mutate(trait = ifelse(grepl("Glucose", trait), "glc", trait)) %>%
+	gather(key = "covariate", value = "adjusted_r2", -sv, -trait) %>%
+	dplyr::filter(!grepl("PC[0-9]", covariate))
+
+p <- ggplot(sva_plot_res_cc, aes(x = as.numeric(sv), y = adjusted_r2, colour = covariate, group = covariate)) +
+	geom_point() +
+	geom_line() +
+	ylim(0,1) +
 	facet_grid(trait ~ .)
 
-ggsave("results/two_traits_covs_variance_explained.pdf", plot = p)
+ggsave("results/two_traits_covs_variance_explained_cc.pdf", plot = p)
+
 
 # all_res <- do.call(rbind, sva_res_list) 
 # rownames(all_res) <- NULL
