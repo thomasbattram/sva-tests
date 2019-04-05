@@ -173,8 +173,8 @@ df <- df %>%
 	left_join(real_dat)
 
 traits <- colnames(df)[-grep("aln", colnames(df))]
-nsv_dat <- data.frame(trait = traits, rmt = NA, leek_nsv = NA, 
-					  rmt_cc = NA, leek_nsv_cc = NA)
+models <- c("null", "cc")
+# traits <- traits[1:2]
 
 df <- df %>%
 	left_join(pheno, by = c("aln" = "ALN"))
@@ -185,130 +185,96 @@ covs <- colnames(pheno)[-c(1, 2)]
 covs <- covs[-grep(c("Slide|BCD_plate"), covs)]
 cc <- covs[1:6]
 
-
-# temp_mdata <- mdata[sample(1:nrow(mdata), 2000), comp_df$Sample_Name]
-i=2
-for (i in 1:nrow(nsv_dat)) {
-	print(i)
-	temp_trait <- as.character(nsv_dat[i, "trait"])
-
-	temp_df <- df %>%
-		dplyr::select(Sample_Name, one_of(c(temp_trait, covs))) %>%
-		na.omit()
-
-	temp_mdata <- mdata[, temp_df$Sample_Name]
-
-	nsv_dat[i, "rmt"] <- tryCatch({est_nsv(temp_mdata, temp_trait, temp_df)}, 
-						 error = function(e) {err_msg(e)})
-
-	nsv_dat[i, "rmt_cc"] <- tryCatch({est_nsv(temp_mdata, c(temp_trait, cc), temp_df)}, 
-						 	error = function(e) {err_msg(e)})
-
-	fom <- as.formula(paste("~", paste(temp_trait, collapse = " + ")))
-	mod <- model.matrix(fom, data=temp_df)
-	nsv_dat[i, "leek_nsv"] <- tryCatch({num.sv(temp_mdata, mod, method = "leek")}, 
-						  error = function(e) {err_msg(e)})
-
-	fom <- as.formula(paste("~", paste(c(temp_trait, cc), collapse = " + ")))
-	mod <- model.matrix(fom, data=temp_df)
-	nsv_dat[i, "leek_nsv_cc"] <- tryCatch({num.sv(temp_mdata, mod, method = "leek")}, 
-						  error = function(e) {err_msg(e)})
-
-
-}
-
-write.table(nsv_dat, "data/estimated_sv_num.txt", col.names = T, row.names = F, quote = F, sep = "\t")
-
-
-# generate the SVs
-sva_list <- vector(mode = "list", length = length(traits)*2)
-names(sva_list) <- c(traits, paste0(traits, "_cc"))
-i=2
-for (i in 1:length(traits)) {
-	trait <- traits[i]
-	
+# calculate the number of SVs estimated from rmt and the leek method in the sva package
+nsv_dat <- lapply(traits, function(trait) {
 	temp_df <- df %>%
 		dplyr::select(Sample_Name, one_of(c(trait, covs))) %>%
 		na.omit()
 
 	temp_mdata <- mdata[, temp_df$Sample_Name]
-	fom <- as.formula(paste0(" ~ ", trait))
-	mod <- model.matrix(fom, data = temp_df)
 
-	svobj <- tryCatch({smartsva.cpp(temp_mdata, mod, mod0=NULL, n.sv = 60)},
-								   error = function(e) {err_msg(e = e, return = NULL)})
-	if (!is.null(svobj)) sva_list[[trait]] <- svobj
+	x <- lapply(models, function(model) {
+		if (model == "cc") {
+			temp_trait <- c(trait, cc)
+		} else {
+			temp_trait <- trait
+		}
+		rmt <- tryCatch({est_nsv(temp_mdata, temp_trait, temp_df)}, 
+						 error = function(e) {err_msg(e)})
 
-	# now with cell counts included
-	fom <- as.formula(paste0(" ~ ", paste(c(trait, cc), collapse = "+")))
-	mod <- model.matrix(fom, data = temp_df)
+		fom <- as.formula(paste("~", paste(temp_trait, collapse = " + ")))
+		mod <- model.matrix(fom, data = temp_df)
 
-	fom0 <- as.formula(paste0(" ~ ", paste(cc, collapse = "+")))
-	mod0 <- model.matrix(fom0, data = temp_df)
+		leek <- tryCatch({num.sv(temp_mdata, mod, method = "leek")}, 
+						  error = function(e) {err_msg(e)})
 
-	svobj <- tryCatch({smartsva.cpp(temp_mdata, mod, mod0=mod0, n.sv = 60)},
-								   error = function(e) {err_msg(e = e, return = NULL)})
-	if (!is.null(svobj)) sva_list[[paste0(trait, "_cc")]] <- svobj
+		return(c(rmt, leek))
+	})
+	names(x) <- models
+	out_dat <- data.frame(trait = trait, rmt = x$null[1], leek = x$null[2], 
+						  rmt_cc = x$cc[1], leek_cc = x$cc[2])
+	return(out_dat)
+})
 
+nsv_dat <- do.call(rbind, nsv_dat)
 
-	# nsv <- max(unlist(nsv_dat[nsv_dat$trait == trait, c(2,3), drop = T]))
+write.table(nsv_dat, "data/estimated_sv_num.txt", col.names = T, row.names = F, quote = F, sep = "\t")
 
-}
+# generate the svs
+sva_list <- lapply(traits, function(trait) {
+	temp_df <- df %>%
+		dplyr::select(Sample_Name, one_of(c(trait, covs))) %>%
+		na.omit()
+	temp_mdata <- mdata[, temp_df$Sample_Name]
+	
+	x <- lapply(models, function(model) {
+
+		fom <- as.formula(paste0(" ~ ", trait))
+		mod <- model.matrix(fom, data = temp_df)
+
+		svobj <- tryCatch({smartsva.cpp(temp_mdata, mod, mod0=NULL, n.sv = 60)},
+										error = function(e) {err_msg(e = e, return = NULL)})
+		return(svobj)
+	})
+	return(x)
+})
 
 # test the SVs
-sva_res_list <- list()
-i=traits[1]
-for (i in traits) {
-	print(i)
+sva_res_list <- lapply(traits, function(trait) {
 	temp_df <- df %>%
-		dplyr::select(Sample_Name, one_of(c(i, covs))) %>%
+		dplyr::select(Sample_Name, one_of(c(trait, covs))) %>%
 		na.omit()
-	
-	svs <- sva_list[[i]]$sv
-	if (is.null(svs)) next
-	sva_temp <- as.data.frame(matrix(NA, nrow = length(covs), ncol = ncol(svs) + 1))
-	colnames(sva_temp) <- c("covariate", paste0("sv", 1:ncol(svs)))
-	sva_temp$covariate <- covs
 
-	res_list <- list()
-	for (j in 1:ncol(svs)) {
-		print(j)
-		temp_svs <- as.data.frame(svs[, 1:j, drop = F])
-		
-		res_list[[j]] <- apply(temp_df[, covs], 2, function(x) {summary(lm(x ~ ., data = temp_svs))$adj.r.squared})
-		
-	}
-	res <- as.data.frame(do.call(rbind, res_list)) %>%
-		mutate(sv = as.factor(1:nrow(.))) %>%
-		dplyr::select(sv, everything())
+	x <- lapply(models, function(model) {
+		svs <- sva_list[[trait]][[model]]$sv
+		if (is.null(svs)) next
 
-	sva_res_list[[i]] <- res
+		sva_temp <- as.data.frame(matrix(NA, nrow = length(covs), ncol = ncol(svs) + 1))
+		colnames(sva_temp) <- c("covariate", paste0("sv", 1:ncol(svs)))
+		sva_temp$covariate <- covs
 
-	svs <- sva_list[[paste0(i, "_cc")]]$sv
-	if (is.null(svs)) next
-	sva_temp <- as.data.frame(matrix(NA, nrow = length(covs) - length(cc), ncol = ncol(svs) + 1))
-	colnames(sva_temp) <- c("covariate", paste0("sv", 1:ncol(svs)))
-	sva_temp$covariate <- covs[!covs %in% cc]
+		res_list <- list()
+		for (j in 1:ncol(svs)) {
+			print(j)
+			temp_svs <- as.data.frame(svs[, 1:j, drop = F])
+			
+			res_list[[j]] <- apply(temp_df[, covs], 2, function(x) {summary(lm(x ~ ., data = temp_svs))$adj.r.squared})
+			
+		}
 
-	res_list <- list()
-	for (j in 1:ncol(svs)) {
-		print(j)
-		temp_svs <- as.data.frame(svs[, 1:j, drop = F])
-		
-		res_list[[j]] <- apply(temp_df[, covs[!covs %in% cc]], 2, function(x) {summary(lm(x ~ ., data = temp_svs))$adj.r.squared})
-		
-	}
-	res_cc <- as.data.frame(do.call(rbind, res_list)) %>%
-		mutate(sv = as.factor(1:nrow(.))) %>%
-		dplyr::select(sv, everything())
+		res <- as.data.frame(do.call(rbind, res_list)) %>%
+			mutate(sv = as.factor(1:nrow(.))) %>%
+			dplyr::select(sv, everything())
 
-	sva_res_list[[paste0(i, "_cc")]] <- res_cc
-
-}
-
+		return(res)
+	})
+	return(x)
+})
 save(sva_res_list, file = "data/cov_r2_res.RData")
 
-# plot it all! 
+
+
+# plot it all!  --- won't work at the moment!
 plot_list <- list()
 i=names(sva_res_list)[1]
 for (i in names(sva_res_list)) {
