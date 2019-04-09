@@ -95,15 +95,25 @@ smsva_450 <- sv_list[[list_nam[1]]]
 
 # assess the correlation between the 20 SVs produced and see how much variance one explains of the other
 smart_v_normal <- data.frame(sv = 1:20, cor = NA, adj_r2 = NA)
+plot_list <- list()
 for (j in 1:nrow(smart_v_normal)) {
 	sva_sv <- sva_450$sv[, j]
 	smsva_sv <- smsva_450$sv[, j]
 	smart_v_normal[j, 2] <- cor(smsva_sv, sva_sv)
 	fit <- lm(smsva_sv ~ sva_sv)
 	smart_v_normal[j, 3] <- summary(fit)$adj.r.squared
+	# for plots
+	plot_df <- data.frame(sva = sva_sv, smsva = smsva_sv)
+	sv_type_plot_list[[i]] <- ggplot(plot_df, aes(x = sva, y = smsva)) +
+		geom_point() + 
+		geom_abline(colour = "red") + 
+		geom_smooth() + 
+		ggtitle(paste0("SV", j))
 }
 
 write.table(smart_v_normal, file = paste0("results/smartsva_v_sva_sims", mnam, ".txt"), quote = F, row.names = F, col.names = T, sep = "\t")
+
+save(sv_type_plot_list, file = paste0("results/smartsva_v_sva_sims_svplots", mnam, "RData"), quote = F, row.names = F, col.names = T, sep = "\t")
 
 # 450k vs lower 
 list_nam <- with(params, paste("con",
