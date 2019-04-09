@@ -1,6 +1,6 @@
 rm(list = ls())
 
-pkgs <- c("tidyverse", "sva", "SmartSVA", "gridExtra", "RColorBrewer")
+pkgs <- c("tidyverse", "sva", "SmartSVA", "gridExtra", "RColorBrewer", "ggrepel")
 lapply(pkgs, require, character.only = T)
 
 devtools::load_all("~/repos/usefunc")
@@ -272,18 +272,33 @@ sva_res_list <- lapply(traits, function(trait) {
 })
 save(sva_res_list, file = "data/cov_r2_res.RData")
 
+load("data/cov_r2_res.RData")
 
+cc <- c("Bcell", "CD4T", "CD8T", "Gran", "Mono", "NK")
+batch <- c("BCD_id", "MSA4Plate_id")
 
 # plot it all!  --- won't work at the moment!
 plot_list <- list()
 i=names(sva_res_list)[1]
 for (i in names(sva_res_list)) {
 	g_res <- gather(sva_res_list[[i]], key = "covariate", value = "adjusted_r2", -sv) %>%
-		dplyr::filter(!grepl("PC[0-9]", covariate))
-	plot_list[[i]] <- ggplot(g_res, aes(x = sv, y = adjusted_r2, colour = covariate, group = covariate)) +
+		mutate(cov_type = case_when(covariate %in% cc ~ "cell count", 
+									covariate %in% batch ~ "batch", 
+									covariate == "age" ~ "age", 
+									covariate %in% paste0("PC", 1:10) ~ "PC")) %>%
+		mutate(sv = as.numeric(sv)) %>%
+		mutate(lab = case_when(sv == max(sv) & !(covariate %in% paste0("PC", 1:10)) & !(covariate == "age")  ~ covariate,
+							   sv != max(sv) ~ ""))
+
+	xlimits <- c(max(g_res$sv), max(g_res$sv) + 10)
+
+	plot_list[[i]] <- ggplot(g_res, aes(x = sv, y = adjusted_r2, colour = cov_type, group = covariate)) +
 		geom_point() + 
 		geom_line() + 
+		geom_text_repel(aes(label = lab), xlim = xlimits, nudge_x = 1, cex = 2.5) +
+		xlim(NA, max(xlimits)) +
 		labs(title = i)
+
 }
 
 pdf("results/covs_variance_explained.pdf", width = 12, height = 10)
