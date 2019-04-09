@@ -173,16 +173,35 @@ est_num_plot_cap <- fig_nums("est_num_plot")
 # variance of common EWAS covariates explained by SVs
 # take just two traits
 sm_sva_res_list <- sva_res_list[grep("Glucose|rcont", names(sva_res_list))]
-
+max_sv <- map_dbl(sm_sva_res_list, function(x) max(as.numeric(x$sv)))
+names(max_sv) <- c("rcont", "glc")
 sva_plot_res <- do.call(rbind, sm_sva_res_list) %>%
 	rownames_to_column(var = "trait") %>%
 	mutate(trait = gsub("\\..*", "", trait)) %>%
 	mutate(trait = ifelse(grepl("Glucose", trait), "glc", trait)) %>%
-	gather(key = "covariate", value = "adjusted_r2", -sv, -trait)
+	gather(key = "covariate", value = "adjusted_r2", -sv, -trait) %>%
+	mutate(cov_type = case_when(covariate %in% cc ~ "cell count", 
+								covariate %in% batch ~ "batch", 
+								covariate == "age" ~ "age", 
+								covariate %in% paste0("PC", 1:10) ~ "PC")) %>%
+	mutate(sv = as.numeric(sv)) %>%
+	mutate(lab = case_when(trait == "glc" & 
+						   sv == max_sv["glc"] & 
+						   !(covariate %in% paste0("PC", 1:10)) 
+						   & !(covariate == "age") ~ covariate,
+						   sv != max(sv) ~ "", 
+						   trait == "rcont" & 
+						   sv == max_sv["rcont"] & 
+						   !(covariate %in% paste0("PC", 1:10)) & 
+						   !(covariate == "age") ~ covariate))
 
-covs_r2_p <- ggplot(sva_plot_res, aes(x = as.numeric(sv), y = adjusted_r2, colour = covariate, group = covariate)) +
+	xlimits <- c(max(g_res$sv), max(g_res$sv) + 10)
+
+covs_r2_p <- ggplot(sva_plot_res, aes(x = sv, y = adjusted_r2, colour = cov_type, group = covariate)) +
 	geom_point() +
 	geom_line() +
+	geom_text_repel(aes(label = lab), xlim = xlimits, nudge_x = 1, cex = 2.5) +
+	xlim(NA, max(xlimits)) +
 	labs(x = "SV") +
 	facet_grid(trait ~ .) 
 

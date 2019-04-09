@@ -37,30 +37,18 @@ read_chunk("~/sva_tests/report/sva_paper.R")
 # figures
 fig_nums(name = "time_plot")
 time_plot_cap <- fig_nums("time_plot")
+fig_nums(name = "ncpg_plot", caption = NULL)
+ncpg_plot_cap <- fig_nums("ncpg_plot")
+fig_nums(name = "covs_var_exp", caption = NULL)
+covs_var_exp_cap <- fig_nums("covs_var_exp")
 
-fig_nums(name = "model_comp")
-model_comp_cap <- fig_nums("model_comp")
-fig_nums(name = "comparison")
-comparison_cap <- fig_nums("comparison")
-fig_nums(name = "auc_comparison")
-auc_comparison_cap <- fig_nums("auc_comparison")
-fig_nums(name = "roc_curve")
-roc_curve_cap <- fig_nums("roc_curve")
-fig_nums(name = "m2_hits")
-m2_hits_cap <- fig_nums("m2_hits")
 # tables
+
 # supplementary figures
-sup_fig_nums(name = "outlier_m2")
-outlier_m2_cap <- sup_fig_nums("outlier_m2")
-sup_fig_nums(name = "outlier_m2_2")
-outlier_m2_2_cap <- sup_fig_nums("outlier_m2_2")
-sup_fig_nums(name = "alpha_m2")
-alpha_m2_cap <- sup_fig_nums("alpha_m2")
-sup_fig_nums(name = "alpha_m2_2")
-alpha_m2_2_cap <- sup_fig_nums("alpha_m2_2")
+fig_nums(name = "time_plot2", caption = "How does time taken to perform SVA vary with number of SVs and distribution of phenotype (continuous or binary)?")
+time_plot2_cap <- fig_nums("time_plot2")
+
 # supplementary tables
-sup_table_nums(name = "sens_sum")
-sens_sum_cap <- sup_table_nums("sens_sum")
 ```
 
 
@@ -69,9 +57,15 @@ sens_sum_cap <- sup_table_nums("sens_sum")
 
 Epigenome-wide association studies (EWAS) examine the association between differences in DNA methylation and a trait of interest. High-throughput experiments are required to measure DNA methylation across thousands or millions of CpG sites in large cohorts. These experiments generate unwanted variation in DNA methylation that is related not to the trait of interest being measured, but instead some batch variable. In order to counteract these batch effects and potentially other unwanted variation, surrogate variables (SVs) can be used as covariates in an EWAS. 
 
-Surrogate variable analysis (SVA) was introduced by Leek et al. in 2007 as a method to deal with unwanted variation in gene expression measurement with expression arrays. Since then it has been applied to various different array-based 'omic' measurements including the popular Illumina blah arrays. The computational efficiency has been improved upon by Chen et al. 2017. According to the Chen et al., SmartSVA gives the same SVs as the original SVA, but generates these SVs ten times faster. A further simple method to improve computational efficiency whilst not compromising the SVs produced could be performing SVs on a representative subset of the array.
+Surrogate variable analysis (SVA) was introduced by Leek et al. in 2007 as a method to deal with unwanted variation in gene expression measurement with expression arrays. Since then it has been applied to various different array-based 'omic' measurements including the popular Illumina blah arrays. 
+
+__Add something about why computational efficiency is important__ -e.g. sva is often the most time consuming step + it must be performed for each phenotype of interest
+
+The computational efficiency has been improved upon by Chen et al. 2017. According to Chen et al., SmartSVA gives the same SVs as the original SVA, but generates these SVs ten to fifty times faster. A further simple method to improve computational efficiency whilst not compromising the SVs produced could be performing SVs on a representative subset of the array.
 
 One major problem that researchers experience with SVA is the number of SVs suggested by the SVA or SmartSVA package. Often this can be so high that including them in a linear model would result in major over-fitting. It may also be very low, suggesting few SVs are needed to account for unwanted variation, when in reality more are needed. This has lead to many researchers simply adjusting for an arbitrary number of SVs such as ten or twenty. 
+
+__Add something about the fact there number of SVs as well as subsetting the array may differ massively between datasets__
 
 In this paper we aimed to test the length of time taken to generate SVs using various different parameters, compare the SVs generated and find out how many SVs are needed to account for variation in typical covariates.
 
@@ -136,7 +130,7 @@ Finally, the cumulative variance explained by SVs for each covariate was examine
 
 #### Replication and whole genome estimates
 
-Number of CpGs required to generate 20 SVs for an EPIC array dataset was also examined.
+Number of CpGs required to generate 20 SVs for an EPIC array dataset and X other 450k datasets from GEO was also examined.
 
 Finally we designed a function that suggests how many CpGs should be used given the number of SVs needed and the number of CpGs in total.
 
@@ -144,29 +138,52 @@ Finally we designed a function that suggests how many CpGs should be used given 
 All analyses were done using R (XX), with the SmartSVA and SVA packages.
 
 ## Results
-The correlation between each of 20 SVs produced by the SmartSVA and SVA package was 1 or -1 (__`r sup_table_nums("", display = "cite")`__) and the time taken by SmartSVA was on average X times faster. 
+The correlation between each of 20 SVs produced by the SmartSVA and SVA package was 1 or -1 when the parameters used were the same (__`r sup_table_nums("", display = "cite")`__) and the time taken by SmartSVA was on average X times faster. When using the default alpha and B values in the SmartSVA package there was little change in time taken to using SmartSVA with the default parameters from the SVA package: __`r sup_figure_nums("", display = "cite")`__.
 
-The time taken to produce 20 SVs increased with number of samples and CpGs used to create the SVs (__`r fig_nums("", display = "cite")`__). However, the number of SVs created and whether the phenotype distribution was binary or continuous didn't effect the time very much (__`r sup_fig_nums("", display = "cite")`__).
+The time taken to produce 20 SVs increased with number of samples and CpGs used to create the SVs (__`r fig_nums("time_plot", display = "cite")`__). However, the number of SVs created and whether the phenotype distribution was binary or continuous didn't effect the time very much (__`r sup_fig_nums("", display = "cite")`__).
 
-INSERT FIGURE HERE
+```{r time_plot, results = "asis"}
+```
+
+__`r fig_nums("time_plot", display = "cite")`__: Differences in time taken to finish running surrogate variable analysis with the smartsva.rcpp function in the SmartSVA package when varying the number of CpGs and samples.
 
 When subsetting the 450k array, the number of CpGs required to accurately estimate SVs was examined. When producing 20 SVs, over 95% of the variance of SV 1-10 produced using the entire array was explained by all 20 SVs produced using a random subset of X CpGs. As the SV number increased, the variance explained by all SVs estimated from a subset of CpGs decreased (__`r fig_nums("", display = "cite")`__). To explain over 95% of variance of all SVs, X CpGs were required. When assessing just the first 10 SVs, X CpGs were required. Subsetting to the most variable CpGs produced SVs that explained less of the variance than to random CpGs (__`r sup_fig_nums("", display = "cite")`__).
 
-Using a dataset with X CpGs we found similar results
+Similar findings were observed across X other 450k datasets extracted from GEO __either a table in main manuscript or figures in supplementary__
 
-INSERT FIGURE HERE
+Using a dataset with DNA methylation measured with the EPIC array we observed X.
+
+```{r ncpg_plot, results = "asis"}
+```
+
+__`r fig_nums("ncpg_plot", display = "cite")`__: Variance captured of each of the first 20 SVs made using 450k CpGs by all 20 SVs made using random subsets of varying numbers of CpGs. 
+
 
 The num.sv() function from the SVA package estimated fewer SVs for each of the X phenotypes tested, with a median of X fewer, compared to estimates using random matrix theory (__`r sup_fig_nums("", display = "cite")`__). 
 
-The variance explained of various common EWAS covariates by the number of SVs estimated by random matrix theory varied substantially (__`r fig_nums("", display = "cite")`__). As more SVs were added into the model, less additional variance was explained. For the 10 genomic PCs, the all the SVs explained nearly none of the variance, but for the other covariates, a varying amount of variance was explained, which was fairly consistent across all the real and simulated traits assessed (__`r sup_fig_nums("", display = "cite")`__). The variance explained by 10, 20, 30 and the total number of SVs for each covariate for a simulated continuous trait and a real trait are shown in __`r table_nums("", display = "cite")`__.
+The variance explained of various common EWAS covariates by the number of SVs estimated by random matrix theory varied substantially (__`r fig_nums("", display = "cite")`__). As more SVs were added into the model, less additional variance was explained. For the 10 genomic PCs, all the SVs explained nearly none of the variance, but for the other covariates, a varying amount of variance was explained, which was fairly consistent across all the real and simulated traits assessed (__`r sup_fig_nums("", display = "cite")`__). The variance explained by 10, 20, 30 and the total number of SVs for each covariate for a simulated continuous trait and a real trait are shown in __`r table_nums("", display = "cite")`__.
 
-INSERT FIGURE HERE
+```{r covs_var_exp, results = "asis", message = FALSE, echo = FALSE, warning = FALSE, fig.cap = covs_var_exp_cap}
+```
+
+__`r fig_nums("covs_var_exp", display = "cite")`__: Variance of often used covariates in EWAS explained by the number of surrogate variables suggested by random matrix theory.
 
 INSERT TABLE HERE
 
 ## Discussion
 Surrogate variable analyses has been shown to adequately control for unwanted variation in EWAS. However, a method to conduct SVA that increases computational efficiency, whilst maintaining the desired SV function is needed as datasets increase in size. Here we demonstrate that by randomly subsetting the number of CpGs to X% of the number of CpGs used for the analyses to calculate 20 SVs using the SmartSVA package, the time taken decreases by X-fold, compared to using the full set of CpGs and the SVA package, whilst maintaing SV functionality.
 
-   
+
 
 How does time taken to perform SVA vary with sample number, SVA package and CpG number?
+
+
+# Supplementary Material
+
+## Results
+
+INSERT SVA VS SMARTSVA plots here
+
+
+
+
