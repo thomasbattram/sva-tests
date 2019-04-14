@@ -17,7 +17,7 @@ opts_chunk$set(echo = FALSE,
 ```
 
 ```{r call_source}
-read_chunk("~/sva_tests/report/sva_paper.R")
+read_chunk("~/sva_tests/report/sva_report.R")
 ```
 
 ``` {r load_data, results = "hide", message = FALSE, warning = FALSE}
@@ -37,16 +37,24 @@ read_chunk("~/sva_tests/report/sva_paper.R")
 # figures
 fig_nums(name = "time_plot")
 time_plot_cap <- fig_nums("time_plot")
-fig_nums(name = "ncpg_plot", caption = NULL)
+fig_nums(name = "ncpg_plot")
 ncpg_plot_cap <- fig_nums("ncpg_plot")
-fig_nums(name = "covs_var_exp", caption = NULL)
+fig_nums(name = "covs_var_exp")
 covs_var_exp_cap <- fig_nums("covs_var_exp")
 
 # tables
+table_nums(name = "nsv_summary")
+nsv_summary_cap <- table_nums("nsv_summary")
 
 # supplementary figures
-fig_nums(name = "time_plot2", caption = "How does time taken to perform SVA vary with number of SVs and distribution of phenotype (continuous or binary)?")
+sup_fig_nums(name = "smsva_sva_sv_plots")
+smsva_sva_sv_plots_cap <- sup_fig_nums("smsva_sva_sv_plots")
+sup_fig_nums(name = "model_param_time_plot")
+model_param_time_plot_cap <- sup_fig_nums("model_param_time_plot")
+sup_fig_nums(name = "time_plot2")
 time_plot2_cap <- fig_nums("time_plot2")
+sup_fig_nums(name = "est_num_plot")
+est_num_plot_cap <- fig_nums("est_num_plot")
 
 # supplementary tables
 ```
@@ -77,11 +85,11 @@ In this paper we aimed to test the length of time taken to generate SVs using va
 Continuous data was simulated using the rnorm() function and binary data was simulated using sample() in R. 
 
 #### Avon Longitudinal Study of Parents and Children (ALSPAC)
-The real data in the study mainly came from one cohort: the Avon Longitudinal Study of Parents and Children (ALSPAC). ALSPAC recruited pregnant women in the Bristol and Avon area, United Kingdom, with an expected delivery date between April 1991 and December 1992 (http://www.bris.ac.uk/alspac/). Over 14,000 pregnancies have been followed up (both children and parents) throughout the life-course. Full details of the cohort has been published previously (Fraser et al. 2013). This study uses phenotypic and DNA methylation data from the mothers (N = `r `).
+The real data in the study mainly came from one cohort: the Avon Longitudinal Study of Parents and Children (ALSPAC). ALSPAC recruited pregnant women in the Bristol and Avon area, United Kingdom, with an expected delivery date between April 1991 and December 1992 (http://www.bris.ac.uk/alspac/). Over 14,000 pregnancies have been followed up (both children and parents) throughout the life-course. Full details of the cohort has been published previously (Fraser et al. 2013). This study uses phenotypic and DNA methylation data from the mothers (N = `r max(params$n_sample)`).
 
-`r ` continuous traits were extracted from the same timepoint blood was drawn for DNA methylation measurements. A summary of the phenotypes are present in the __Supplementary Material__ and full details of all the data is available through a fully searchable data dictionary: http://www.bris.ac.uk/alspac/researchers/data-access/data-dictionary/
+`r length(unique(real_res$trait))` continuous traits were extracted from the same timepoint blood was drawn for DNA methylation measurements. A summary of the phenotypes are present in the __Supplementary Material__ and full details of all the data is available through a fully searchable data dictionary: http://www.bris.ac.uk/alspac/researchers/data-access/data-dictionary/
 
-Where data for a trait was missing in >10% individuals, the trait was removed from further analyses. 754 traits were removed leaving `r nrow(ldak_res) - 754` traits left for analyses. These traits do not neccessarily represent independent phenotypes and as such we wanted to prevent correlated traits skewing results. The absolute Pearson's correlation coefficient between each trait was subtracted from one (1 - absolute r). Then traits were greedily selected having 1 - aboslute r < 0.2 with any other trait.
+These traits do not neccessarily represent independent phenotypes and as such we wanted to prevent correlated traits skewing results. The absolute Pearson's correlation coefficient between each trait was subtracted from one (1 - absolute r). Then traits were greedily selected having 1 - aboslute r < 0.2 with any other trait.
 
 Ethical approval for the study was obtained from the ALSPAC Ethics and Law Committee and from the UK National Health Service Local Research Ethics Committees. Written informed consent was obtained from both the parent/guardian and, after the age of 16, children provided written assent.
 
@@ -138,7 +146,7 @@ Finally we designed a function that suggests how many CpGs should be used given 
 All analyses were done using R (XX), with the SmartSVA and SVA packages.
 
 ## Results
-The correlation between each of 20 SVs produced by the SmartSVA and SVA package was 1 or -1 when the parameters used were the same (__`r sup_table_nums("", display = "cite")`__) and the time taken by SmartSVA was on average X times faster. When using the default alpha and B values in the SmartSVA package there was little change in time taken to using SmartSVA with the default parameters from the SVA package: __`r sup_figure_nums("", display = "cite")`__.
+The correlation between each of 20 SVs produced by the SmartSVA and SVA package was 1 or -1 when the parameters used were the same (__`r sup_table_nums("smsva_sva_sv_plots", display = "cite")`__) and the time taken by SmartSVA was faster when the sample size and number of CpGs were at the maximum, median = `r comma(median(sva_times / smsva_times))` times faster. When using the default alpha and B values in the SmartSVA package there was little change in time taken to using SmartSVA with the default parameters from the SVA package: __`r sup_fig_nums("model_param_time_plot", display = "cite")`__.
 
 The time taken to produce 20 SVs increased with number of samples and CpGs used to create the SVs (__`r fig_nums("time_plot", display = "cite")`__). However, the number of SVs created and whether the phenotype distribution was binary or continuous didn't effect the time very much (__`r sup_fig_nums("", display = "cite")`__).
 
@@ -147,7 +155,7 @@ The time taken to produce 20 SVs increased with number of samples and CpGs used 
 
 __`r fig_nums("time_plot", display = "cite")`__: Differences in time taken to finish running surrogate variable analysis with the smartsva.rcpp function in the SmartSVA package when varying the number of CpGs and samples.
 
-When subsetting the 450k array, the number of CpGs required to accurately estimate SVs was examined. When producing 20 SVs, over 95% of the variance of SV 1-10 produced using the entire array was explained by all 20 SVs produced using a random subset of X CpGs. As the SV number increased, the variance explained by all SVs estimated from a subset of CpGs decreased (__`r fig_nums("", display = "cite")`__). To explain over 95% of variance of all SVs, X CpGs were required. When assessing just the first 10 SVs, X CpGs were required. Subsetting to the most variable CpGs produced SVs that explained less of the variance than to random CpGs (__`r sup_fig_nums("", display = "cite")`__).
+When subsetting the 450k array, the number of CpGs required to accurately estimate SVs was examined. When producing 20 SVs, over 90% of the variance of SV 1-`r print(sv_out_20k)` produced using the entire array was explained by all 20 SVs produced using a random subset of 20,000 CpGs. As the SV number increased, the variance explained by all SVs estimated from a subset of CpGs decreased (__`r fig_nums("ncpg_plot", display = "cite")`__). To explain over 90% of variance of all SVs, `r print(ncpg_out_20sv)` CpGs were required. Subsetting to the most variable CpGs produced SVs that explained less of the variance than when subsetting to random CpGs (__`r sup_fig_nums("time_plot2", display = "cite")`__).
 
 Similar findings were observed across X other 450k datasets extracted from GEO __either a table in main manuscript or figures in supplementary__
 
@@ -158,18 +166,18 @@ Using a dataset with DNA methylation measured with the EPIC array we observed X.
 
 __`r fig_nums("ncpg_plot", display = "cite")`__: Variance captured of each of the first 20 SVs made using 450k CpGs by all 20 SVs made using random subsets of varying numbers of CpGs. 
 
+The num.sv() function from the SVA package estimated fewer SVs for each of the X phenotypes tested, with a median of X fewer, compared to estimates using random matrix theory (__`r sup_fig_nums("est_num_plot", display = "cite")`__). 
 
-The num.sv() function from the SVA package estimated fewer SVs for each of the X phenotypes tested, with a median of X fewer, compared to estimates using random matrix theory (__`r sup_fig_nums("", display = "cite")`__). 
+The variance explained of various common EWAS covariates by the number of SVs estimated by random matrix theory varied substantially (__`r fig_nums("covs_var_exp", display = "cite")`__). As more SVs were added into the model, less additional variance was explained. For the 10 genomic PCs, all the SVs explained nearly none of the variance, but for the other covariates, a varying amount of variance was explained, which was fairly consistent across all the real and simulated traits assessed (__`r sup_fig_nums("", display = "cite")`__). <!-- The variance explained by 10, 20, 30 and the total number of SVs for each covariate for a simulated continuous trait and a real trait are shown in __`r table_nums("nsv_summary", display = "cite")`__. -->
 
-The variance explained of various common EWAS covariates by the number of SVs estimated by random matrix theory varied substantially (__`r fig_nums("", display = "cite")`__). As more SVs were added into the model, less additional variance was explained. For the 10 genomic PCs, all the SVs explained nearly none of the variance, but for the other covariates, a varying amount of variance was explained, which was fairly consistent across all the real and simulated traits assessed (__`r sup_fig_nums("", display = "cite")`__). The variance explained by 10, 20, 30 and the total number of SVs for each covariate for a simulated continuous trait and a real trait are shown in __`r table_nums("", display = "cite")`__.
-
-```{r covs_var_exp, results = "asis", message = FALSE, echo = FALSE, warning = FALSE, fig.cap = covs_var_exp_cap}
+```{r covs_var_exp, results = "asis"}
 ```
 
 __`r fig_nums("covs_var_exp", display = "cite")`__: Variance of often used covariates in EWAS explained by the number of surrogate variables suggested by random matrix theory.
 
-INSERT TABLE HERE
-
+<!-- ```{r nsv_summary, results = "asis"}
+```
+ -->
 ## Discussion
 Surrogate variable analyses has been shown to adequately control for unwanted variation in EWAS. However, a method to conduct SVA that increases computational efficiency, whilst maintaining the desired SV function is needed as datasets increase in size. Here we demonstrate that by randomly subsetting the number of CpGs to X% of the number of CpGs used for the analyses to calculate 20 SVs using the SmartSVA package, the time taken decreases by X-fold, compared to using the full set of CpGs and the SVA package, whilst maintaing SV functionality.
 
@@ -182,8 +190,22 @@ How does time taken to perform SVA vary with sample number, SVA package and CpG 
 
 ## Results
 
-INSERT SVA VS SMARTSVA plots here
+```{r smsva_sva_sv_plots, results = "asis"}
+```
 
+What is the correlation between SVs produced by smartsva and sva?
 
+```{r model_param_time_plot, results = "asis"}
+```
 
+How does time taken to perform SVA vary with alpha and B values?
 
+```{r time_plot2, results = "asis"}
+```
+
+How does time taken to perform SVA vary with number of SVs and distribution of phenotype (continuous or binary)?
+
+```{r est_num_plot, results = "asis"}
+```
+
+Number of SVs required estimated using num.sv() and random matrix theory
