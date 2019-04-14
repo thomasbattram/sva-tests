@@ -368,10 +368,40 @@ ggsave("results/two_traits_covs_variance_explained_cc.pdf", plot = p)
 load("data/cov_r2_res.RData")
 i=names(sva_res_list)[1]
 res_list <- list()
+
+sva_res_list <- lapply(sva_res_list, function(x) {
+	res <- x %>%
+		mutate(sv = as.numeric(sv))
+})
+
+x=1
+y=21
+out_res <- lapply(seq_along(sva_res_list), function(x) {
+	sva_res <- sva_res_list[[x]]
+	trait <- names(sva_res_list)[[x]]
+
+	dat <- lapply(2:ncol(sva_res), function(y) {
+		cov <- colnames(sva_res)[y]	
+		new_res <- sva_res %>%
+			dplyr::select(sv, cov)
+		svs <- c(1, 10, 20, 30, max(sva_res$sv))
+		adj_r2 <- new_res %>%
+			dplyr::filter(sv %in% svs) %>%
+			.[[cov]]	
+		out_dat <- data.frame(trait = trait, 
+							  cov = cov, 
+							  sv = svs,
+							  adj_r2 = adj_r2)
+		return(out_dat)
+	})
+	dat <- do.call(rbind, dat)
+	return(dat)
+})
+
 for (i in names(sva_res_list)) {
 	temp_dat <- sva_res_list[[i]]
 	temp_res <- data.frame(trait = NA, cov = NA, sv = NA, adj_r2 = NA, max_sv = NA, max_adj_r2 = NA)
-
+j=2
 	for (j in 2:ncol(temp_dat)) {
 		cov <- colnames(temp_dat)[j]
 		temp_res[j-1, "cov"] <- cov
