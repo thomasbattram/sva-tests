@@ -103,17 +103,41 @@ for (j in 1:nrow(smart_v_normal)) {
 	fit <- lm(smsva_sv ~ sva_sv)
 	smart_v_normal[j, 3] <- summary(fit)$adj.r.squared
 	# for plots
-	plot_df <- data.frame(sva = sva_sv, smsva = smsva_sv)
-	sv_type_plot_list[[i]] <- ggplot(plot_df, aes(x = sva, y = smsva)) +
-		geom_point() + 
-		geom_abline(colour = "red") + 
-		geom_smooth() + 
-		ggtitle(paste0("SV", j))
+	plot_list[[j]] <- data.frame(sva = sva_sv, smsva = smsva_sv)
 }
 
 write.table(smart_v_normal, file = paste0("results/smartsva_v_sva_sims", mnam, ".txt"), quote = F, row.names = F, col.names = T, sep = "\t")
 
-save(sv_type_plot_list, file = paste0("results/smartsva_v_sva_sims_svplots", mnam, "RData"), quote = F, row.names = F, col.names = T, sep = "\t")
+save(plot_list, file = paste0("results/smartsva_v_sva_sims_svplots_data", mnam, ".RData"))
+
+sv_type_plot_list <- lapply(seq_along(plot_list), function(x) {
+	dat <- plot_list[[x]]
+	correlation <- cor(dat$sva, dat$smsva)
+	adj_r2 <- summary(lm(smsva ~ sva, dat))$adj.r.squared
+	slope <- ifelse(sign(correlation) == 1, 1, -1)
+	text_pos_x <- ifelse(sign(correlation) == 1, min(dat$smsva), max(dat$smsva))
+	text_pos_y <- c(max(dat$smsva), max(dat$smsva)*0.9)
+	val <- as.numeric(comma(adj_r2))
+	p <- ggplot(dat, aes(x = sva, y = smsva)) +
+		geom_point() + 
+		geom_abline(colour = "red", slope = slope) + 
+		# geom_smooth() + 
+		ggtitle(paste0("SV", x))
+		# annotate("text", x = -Inf, y = text_pos_y[1], label = paste("r =", comma(correlation)), hjust=-1, vjust=1) +
+		# annotate("text", x = -Inf, y = text_pos_y[2], label = bquote(r^2 == .(val)), hjust=-1, vjust=1)
+	return(p)
+})
+
+
+pdf("results/smsva_vs_sva_svplots.pdf")
+marrangeGrob(sv_type_plot_list, nrow=4, ncol=5)
+dev.off()
+
+sv_type_plot_list[[j]] <- ggplot(plot_df, aes(x = sva, y = smsva)) +
+		geom_point() + 
+		geom_abline(colour = "red") + 
+		geom_smooth() + 
+		ggtitle(paste0("SV", j))
 
 # 450k vs lower 
 list_nam <- with(params, paste("con",
