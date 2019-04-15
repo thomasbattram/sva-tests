@@ -68,7 +68,7 @@ est_nsv <- function(meth, traits, df) {
 
 
 files <- list.files(geo_dat_path)
-gse_id <- gses$gse_id[6]
+gse_id <- gses$gse_id[19]
 nsv_dat <- lapply(gses$gse_id, function(gse_id) {
 	if (!any(grepl(gse_id, files))) return(NULL)
 	print("Loading file!")
@@ -89,7 +89,8 @@ nsv_dat <- lapply(gses$gse_id, function(gse_id) {
 	# remove NAs
 	meth <- na.omit(meth)
 	print(dim(meth))
-
+	if (nrow(meth) < 3e5) return(NULL)
+	
 	rmt_nsv <- est_nsv(as.matrix(meth), "x", phen)
 
 	fom <- as.formula("~x")
@@ -107,7 +108,7 @@ nsv_dat <- lapply(gses$gse_id, function(gse_id) {
 		n_cpg <- c(seq(20000, 300000, 20000), nrow(meth))
 	}
 	print("Running SVA")
-	ncpg <- 20000
+
 	sv_list <- lapply(n_cpg, function(ncpg) {
 		print(ncpg)
 		set.seed(2)
