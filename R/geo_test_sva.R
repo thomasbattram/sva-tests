@@ -136,14 +136,22 @@ ggsave("results/geo_nsv_estimation_plot.pdf", plot = p)
 
 
 # testing the SVs! 
-ncpg_dat <- as.data.frame(matrix(NA, nrow = length(sv_list), ncol = 21))
-colnames(ncpg_dat)[1] <- "n_cpg"
-colnames(ncpg_dat)[2:21] <- paste0("sv", 1:20, "_adjr2")
-
-geo_ncpg_dat <- lapply(gse$gse_id, function(gse_id) {
+gse_id <- gses$gse_id[1]
+geo_ncpg_dat <- lapply(gses$gse_id, function(gse_id) {
 	nam <- paste0("data/geo_data/", gse_id, "_sv_list.RData")
-	load(nam)
+	ifelse(file.exists(nam), load(nam), return(NULL))
 	if (is.na(sv_list)) return(NULL)
+	ncpg_dat <- as.data.frame(matrix(NA, nrow = length(sv_list), ncol = 21))
+	colnames(ncpg_dat)[1] <- "n_cpg"
+	colnames(ncpg_dat)[2:21] <- paste0("sv", 1:20, "_adjr2")
+
+	if (nrow(ncpg_dat) == 16) {
+		# n_cpg <- c(seq(20000, 300000, 20000), nsv_dat[nsv_dat$gse_id == gse_id, "n_cpg"])
+		n_cpg <- c(seq(20000, 300000, 20000), 480000)
+	} else {
+		n_cpg <- c(seq(20000, 700000, 20000), nsv_dat[nsv_dat$gse_id == gse_id, "n_cpg"])
+	}
+
 	svs <- sv_list[[length(sv_list)]]$sv
 
 	for (i in seq_along(sv_list)) {
@@ -156,6 +164,30 @@ geo_ncpg_dat <- lapply(gse$gse_id, function(gse_id) {
 			ncpg_dat[i, j+1] <- summary(fit)$adj.r.squared
 		}
 	}
+	ncpg_dat$gse_id <- gse_id
+	return(ncpg_dat)
+})
+fin_dat <- geo_ncpg_dat[!map_lgl(geo_ncpg_dat, is.null)] %>%
+	do.call(rbind, .)
+rownames(fin_dat) <- NULL
+
+g_dat <- fin_dat %>%
+	gather("sv", "adj_r2", -n_cpg, -gse_id)
+g_dat$sv <- gsub("sv", "", g_dat$sv)
+g_dat$sv <- gsub("_adjr2", "", g_dat$sv)
+
+p <- lapply(unique(g_dat$sv), function(sv_n) {
+	dat <- dplyr::filter(g_dat, sv == sv_n)
+	p <- ggplot(dat, aes(x = as.factor(n_cpg), y = adj_r2)) +
+		geom_boxplot() +
+		ggtitle(sv_n)
+	return(p)
+})
+ggsave("results/geo_ncpg_plot.pdf", plot = marrangeGrob(p, nrow=1, ncol=1))
+
+g_dat <- lapply(fin_dat, function(x) {
+	dat <- x %>%
+		gather("sv", "adj_r2", -n_cpg)
 })
 
 save(geo_ncpg_dat, file = "results/geo_ncpg_dat.txt")
