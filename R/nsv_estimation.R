@@ -85,7 +85,6 @@ ggsave("results/estimating_nsv_methods.pdf", plot = p)
 # load the FOM1 data
 fom_dat <- read_delim(paste0(phen_dir, "ALSPAC/FOM1_only_data_FOM.txt"), delim = "\t")
 
-
 count_na <- function(dat, col_or_row = 2) {
 	stopifnot(col_or_row %in% c(1,2))
 	x <- apply(dat, col_or_row, function(x) {sum(is.na(x))})
@@ -172,7 +171,7 @@ for (i in seq(0.05, 0.5, 0.05)) {
 df <- df %>%
 	left_join(real_dat)
 
-traits <- colnames(df)[-grep("aln", colnames(df))]
+traits <- c(colnames(df)[-grep("aln", colnames(df))], "age")
 models <- c("null", "cc")
 # traits <- traits[1:2]
 
@@ -184,7 +183,7 @@ covs <- colnames(pheno)[-c(1, 2)]
 # + removing BCD_plate because it doesn't work when trying to figure out number of SVs needed...
 covs <- covs[-grep(c("Slide|BCD_plate"), covs)]
 cc <- covs[1:6]
-
+trait="age"
 # calculate the number of SVs estimated from rmt and the leek method in the sva package
 nsv_dat <- lapply(traits, function(trait) {
 	temp_df <- df %>%
@@ -238,7 +237,6 @@ sva_list <- lapply(traits, function(trait) {
 	})
 	return(x)
 })
-
 # test the SVs
 sva_res_list <- lapply(traits, function(trait) {
 	temp_df <- df %>%
@@ -246,7 +244,8 @@ sva_res_list <- lapply(traits, function(trait) {
 		na.omit()
 
 	x <- lapply(models, function(model) {
-		svs <- sva_list[[trait]][[model]]$sv
+		svs <- sva_list[[1]][[model]]$sv
+		# svs <- sva_list[[trait]][[model]]$sv
 		if (is.null(svs)) next
 
 		sva_temp <- as.data.frame(matrix(NA, nrow = length(covs), ncol = ncol(svs) + 1))
@@ -254,10 +253,10 @@ sva_res_list <- lapply(traits, function(trait) {
 		sva_temp$covariate <- covs
 
 		res_list <- list()
+
 		for (j in 1:ncol(svs)) {
 			print(j)
 			temp_svs <- as.data.frame(svs[, 1:j, drop = F])
-			
 			res_list[[j]] <- apply(temp_df[, covs], 2, function(x) {summary(lm(x ~ ., data = temp_svs))$adj.r.squared})
 			
 		}
@@ -277,214 +276,214 @@ load("data/cov_r2_res.RData")
 cc <- c("Bcell", "CD4T", "CD8T", "Gran", "Mono", "NK")
 batch <- c("BCD_id", "MSA4Plate_id")
 
-# plot it all!  --- won't work at the moment!
-plot_list <- list()
-i=names(sva_res_list)[1]
-for (i in names(sva_res_list)) {
-	g_res <- gather(sva_res_list[[i]], key = "covariate", value = "adjusted_r2", -sv) %>%
-		mutate(cov_type = case_when(covariate %in% cc ~ "cell count", 
-									covariate %in% batch ~ "batch", 
-									covariate == "age" ~ "age", 
-									covariate %in% paste0("PC", 1:10) ~ "PC")) %>%
-		mutate(sv = as.numeric(sv)) %>%
-		mutate(lab = case_when(sv == max(sv) & !(covariate %in% paste0("PC", 1:10)) & !(covariate == "age")  ~ covariate,
-							   sv != max(sv) ~ ""))
+# # plot it all!  --- won't work at the moment!
+# plot_list <- list()
+# i=names(sva_res_list)[1]
+# for (i in names(sva_res_list)) {
+# 	g_res <- gather(sva_res_list[[i]], key = "covariate", value = "adjusted_r2", -sv) %>%
+# 		mutate(cov_type = case_when(covariate %in% cc ~ "cell count", 
+# 									covariate %in% batch ~ "batch", 
+# 									covariate == "age" ~ "age", 
+# 									covariate %in% paste0("PC", 1:10) ~ "PC")) %>%
+# 		mutate(sv = as.numeric(sv)) %>%
+# 		mutate(lab = case_when(sv == max(sv) & !(covariate %in% paste0("PC", 1:10)) & !(covariate == "age")  ~ covariate,
+# 							   sv != max(sv) ~ ""))
 
-	xlimits <- c(max(g_res$sv), max(g_res$sv) + 10)
+# 	xlimits <- c(max(g_res$sv), max(g_res$sv) + 10)
 
-	plot_list[[i]] <- ggplot(g_res, aes(x = sv, y = adjusted_r2, colour = cov_type, group = covariate)) +
-		geom_point() + 
-		geom_line() + 
-		geom_text_repel(aes(label = lab), xlim = xlimits, nudge_x = 1, cex = 2.5) +
-		xlim(NA, max(xlimits)) +
-		labs(title = i)
+# 	plot_list[[i]] <- ggplot(g_res, aes(x = sv, y = adjusted_r2, colour = cov_type, group = covariate)) +
+# 		geom_point() + 
+# 		geom_line() + 
+# 		geom_text_repel(aes(label = lab), xlim = xlimits, nudge_x = 1, cex = 2.5) +
+# 		xlim(NA, max(xlimits)) +
+# 		labs(title = i)
 
-}
-
-pdf("results/covs_variance_explained.pdf", width = 12, height = 10)
-marrangeGrob(plot_list, ncol = 1, nrow = 2)
-dev.off()
-
-# just 2 of the phenotypes
-sm_sva_res_list <- sva_res_list[grep("Glucose|rcont", names(sva_res_list))]
-sm_sva_res_list_cc <- sm_sva_res_list[grep("_cc", names(sm_sva_res_list))]
-sm_sva_res_list <- sm_sva_res_list[-grep("_cc", names(sm_sva_res_list))]
-
-sva_plot_res <- do.call(rbind, sm_sva_res_list) %>%
-	rownames_to_column(var = "trait") %>%
-	mutate(trait = gsub("\\..*", "", trait)) %>%
-	mutate(trait = ifelse(grepl("Glucose", trait), "glc", trait)) %>%
-	gather(key = "covariate", value = "adjusted_r2", -sv, -trait) %>%
-	dplyr::filter(!grepl("PC[0-9]", covariate))
-
-p <- ggplot(sva_plot_res, aes(x = as.numeric(sv), y = adjusted_r2, colour = covariate, group = covariate)) +
-	geom_point() +
-	geom_line() +
-	facet_grid(. ~ trait)
-
-ggsave("results/two_traits_covs_variance_explained.pdf", plot = p, width = 15, height = 10, units = "in")
-
-sva_plot_res_cc <- do.call(rbind, sm_sva_res_list_cc) %>%
-	rownames_to_column(var = "trait") %>%
-	mutate(trait = gsub("\\..*", "", trait)) %>%
-	mutate(trait = ifelse(grepl("Glucose", trait), "glc", trait)) %>%
-	gather(key = "covariate", value = "adjusted_r2", -sv, -trait) %>%
-	dplyr::filter(!grepl("PC[0-9]", covariate))
-
-p <- ggplot(sva_plot_res_cc, aes(x = as.numeric(sv), y = adjusted_r2, colour = covariate, group = covariate)) +
-	geom_point() +
-	geom_line() +
-	ylim(0,1) +
-	facet_grid(trait ~ .)
-
-ggsave("results/two_traits_covs_variance_explained_cc.pdf", plot = p)
-
-
-# all_res <- do.call(rbind, sva_res_list) 
-# rownames(all_res) <- NULL
-
-# g_all_res <- all_res %>%
-# 	gather(key = "covariate", value = "adjusted_r2", -sv)
-
-# p <- ggplot(g_all_res, aes(x = covariate, y = adjusted_r2)) +
-# 	geom_violin()
-
-# p_violin_list <- list()
-# for (i in seq(10, max(as.numeric(g_all_res$sv)), 10)) {
-# 	temp_res <- g_all_res %>%
-# 		dplyr::filter(sv == i)
-# 	p_violin_list[[as.character(i)]] <- ggplot(temp_res, aes(x = covariate, y = adjusted_r2)) +
-# 		geom_violin()	
 # }
 
-# pdf("results/covs_r2_violin.pdf", width = 15, height = 10)
-# marrangeGrob(p_violin_list, nrow = 2, ncol = 1)
+# pdf("results/covs_variance_explained.pdf", width = 12, height = 10)
+# marrangeGrob(plot_list, ncol = 1, nrow = 2)
 # dev.off()
 
-# ggsave("results/covs_r2_violin.pdf", plot = p, width = 15, height = 10, units = "in")
+# # just 2 of the phenotypes
+# sm_sva_res_list <- sva_res_list[grep("Glucose|rcont", names(sva_res_list))]
+# sm_sva_res_list_cc <- sm_sva_res_list[grep("_cc", names(sm_sva_res_list))]
+# sm_sva_res_list <- sm_sva_res_list[-grep("_cc", names(sm_sva_res_list))]
+
+# sva_plot_res <- do.call(rbind, sm_sva_res_list) %>%
+# 	rownames_to_column(var = "trait") %>%
+# 	mutate(trait = gsub("\\..*", "", trait)) %>%
+# 	mutate(trait = ifelse(grepl("Glucose", trait), "glc", trait)) %>%
+# 	gather(key = "covariate", value = "adjusted_r2", -sv, -trait) %>%
+# 	dplyr::filter(!grepl("PC[0-9]", covariate))
+
+# p <- ggplot(sva_plot_res, aes(x = as.numeric(sv), y = adjusted_r2, colour = covariate, group = covariate)) +
+# 	geom_point() +
+# 	geom_line() +
+# 	facet_grid(. ~ trait)
+
+# ggsave("results/two_traits_covs_variance_explained.pdf", plot = p, width = 15, height = 10, units = "in")
+
+# sva_plot_res_cc <- do.call(rbind, sm_sva_res_list_cc) %>%
+# 	rownames_to_column(var = "trait") %>%
+# 	mutate(trait = gsub("\\..*", "", trait)) %>%
+# 	mutate(trait = ifelse(grepl("Glucose", trait), "glc", trait)) %>%
+# 	gather(key = "covariate", value = "adjusted_r2", -sv, -trait) %>%
+# 	dplyr::filter(!grepl("PC[0-9]", covariate))
+
+# p <- ggplot(sva_plot_res_cc, aes(x = as.numeric(sv), y = adjusted_r2, colour = covariate, group = covariate)) +
+# 	geom_point() +
+# 	geom_line() +
+# 	ylim(0,1) +
+# 	facet_grid(trait ~ .)
+
+# ggsave("results/two_traits_covs_variance_explained_cc.pdf", plot = p)
 
 
-## looking at the time taken to get to within 5% of max variance explained
-load("data/cov_r2_res.RData")
-i=names(sva_res_list)[1]
-res_list <- list()
+# # all_res <- do.call(rbind, sva_res_list) 
+# # rownames(all_res) <- NULL
 
-sva_res_list <- lapply(sva_res_list, function(x) {
-	res <- x %>%
-		mutate(sv = as.numeric(sv))
-})
+# # g_all_res <- all_res %>%
+# # 	gather(key = "covariate", value = "adjusted_r2", -sv)
 
-x=1
-y=21
-out_res <- lapply(seq_along(sva_res_list), function(x) {
-	sva_res <- sva_res_list[[x]]
-	trait <- names(sva_res_list)[[x]]
+# # p <- ggplot(g_all_res, aes(x = covariate, y = adjusted_r2)) +
+# # 	geom_violin()
 
-	dat <- lapply(2:ncol(sva_res), function(y) {
-		cov <- colnames(sva_res)[y]	
-		new_res <- sva_res %>%
-			dplyr::select(sv, cov)
-		svs <- c(1, 10, 20, 30, max(sva_res$sv))
-		adj_r2 <- new_res %>%
-			dplyr::filter(sv %in% svs) %>%
-			.[[cov]]	
-		out_dat <- data.frame(trait = trait, 
-							  cov = cov, 
-							  sv = svs,
-							  adj_r2 = adj_r2)
-		return(out_dat)
-	})
-	dat <- do.call(rbind, dat)
-	return(dat)
-})
+# # p_violin_list <- list()
+# # for (i in seq(10, max(as.numeric(g_all_res$sv)), 10)) {
+# # 	temp_res <- g_all_res %>%
+# # 		dplyr::filter(sv == i)
+# # 	p_violin_list[[as.character(i)]] <- ggplot(temp_res, aes(x = covariate, y = adjusted_r2)) +
+# # 		geom_violin()	
+# # }
 
-for (i in names(sva_res_list)) {
-	temp_dat <- sva_res_list[[i]]
-	temp_res <- data.frame(trait = NA, cov = NA, sv = NA, adj_r2 = NA, max_sv = NA, max_adj_r2 = NA)
-j=2
-	for (j in 2:ncol(temp_dat)) {
-		cov <- colnames(temp_dat)[j]
-		temp_res[j-1, "cov"] <- cov
-		sv <- 1
-		adj_r2 <- temp_dat[sv, cov]
-		if (sign(max(temp_dat[, cov])) == -1) adj_r2 <- 0
-		if (adj_r2 != 0) {
-			while (adj_r2 < max(temp_dat[, cov]) * 0.95) {
-				sv <- sv+1
-				adj_r2 <- temp_dat[sv, cov]
-			}
-		}
-		temp_res[j-1, "sv"] <- sv
-		temp_res[j-1, "adj_r2"] <- adj_r2
-		temp_res[j-1, "trait"] <- i
-		temp_res[j-1, "max_sv"] <- "not_max"
-		temp_res[j-1, "max_adj_r2"] <- "not_max"
-		# add in the max sv and adj_r2
- 	} 
+# # pdf("results/covs_r2_violin.pdf", width = 15, height = 10)
+# # marrangeGrob(p_violin_list, nrow = 2, ncol = 1)
+# # dev.off()
 
-temp_res2 <- data.frame(trait = NA, cov = NA, sv = NA, adj_r2 = NA, max_sv = NA, max_adj_r2 = NA)
- 	for (k in 2:ncol(temp_dat)) {
- 		cov <- colnames(temp_dat)[k]
- 		temp_res2[k-1, "cov"] <- cov
-		temp_res2[k-1, "adj_r2"] <- max(temp_dat[, cov])
-		temp_res2[k-1, "sv"] <- max(as.numeric(temp_dat[["sv"]]))
-		temp_res2[k-1, "max_sv"] <- "max"
-		temp_res2[k-1, "max_adj_r2"] <- "max"
-		temp_res2[k-1, "trait"] <- i
- 	}
- 	temp_fin_res <- rbind(temp_res, temp_res2)
-	res_list[[i]] <- temp_fin_res
-}
+# # ggsave("results/covs_r2_violin.pdf", plot = p, width = 15, height = 10, units = "in")
 
-# make the table and make it look nice
-res <- do.call(rbind, res_list)
-rownames(res) <- NULL
-head(res)
-res <- res %>%
-	mutate(data = ifelse(grepl("^r", trait), "simulated", "real"))
-	# gather(key = "max_sv", value = "sv", -trait, -cov, -adj_r2, -max_adj_r2, -data) %>%
-	# gather(key = "max_adj_r2", value = "adj_r2", -trait, -cov, -sv, -max_sv, -data)
 
-unique(res$trait)
+# ## looking at the time taken to get to within 5% of max variance explained
+# load("data/cov_r2_res.RData")
+# i=names(sva_res_list)[1]
+# res_list <- list()
 
-new_trait_names <- c("time_of_last_meal", "IDLCE_IDLL", "sLDLCE", "hip_cor", "lac", "glc", "neck_angle", "cre", "art_distensibility", "haem")
-names(new_trait_names) <- unique(res$trait)[12:21] 
+# sva_res_list <- lapply(sva_res_list, function(x) {
+# 	res <- x %>%
+# 		mutate(sv = as.numeric(sv))
+# })
 
-for (i in names(new_trait_names)) {
-	res[res$trait == i, "trait"] <- new_trait_names[i]
-}
+# x=1
+# y=21
+# out_res <- lapply(seq_along(sva_res_list), function(x) {
+# 	sva_res <- sva_res_list[[x]]
+# 	trait <- names(sva_res_list)[[x]]
 
-write.table(res, "results/svs_needed.txt", quote = F, col.names = T, row.names = F, sep = "\t")
+# 	dat <- lapply(2:ncol(sva_res), function(y) {
+# 		cov <- colnames(sva_res)[y]	
+# 		new_res <- sva_res %>%
+# 			dplyr::select(sv, cov)
+# 		svs <- c(1, 10, 20, 30, max(sva_res$sv))
+# 		adj_r2 <- new_res %>%
+# 			dplyr::filter(sv %in% svs) %>%
+# 			.[[cov]]	
+# 		out_dat <- data.frame(trait = trait, 
+# 							  cov = cov, 
+# 							  sv = svs,
+# 							  adj_r2 = adj_r2)
+# 		return(out_dat)
+# 	})
+# 	dat <- do.call(rbind, dat)
+# 	return(dat)
+# })
 
-p <- ggplot(res, aes(x = cov, y = sv, colour = trait, shape = as.factor(max_sv))) +
-	geom_point() +
-	geom_jitter() +
-	facet_grid(~ data)
+# for (i in names(sva_res_list)) {
+# 	temp_dat <- sva_res_list[[i]]
+# 	temp_res <- data.frame(trait = NA, cov = NA, sv = NA, adj_r2 = NA, max_sv = NA, max_adj_r2 = NA)
+# j=2
+# 	for (j in 2:ncol(temp_dat)) {
+# 		cov <- colnames(temp_dat)[j]
+# 		temp_res[j-1, "cov"] <- cov
+# 		sv <- 1
+# 		adj_r2 <- temp_dat[sv, cov]
+# 		if (sign(max(temp_dat[, cov])) == -1) adj_r2 <- 0
+# 		if (adj_r2 != 0) {
+# 			while (adj_r2 < max(temp_dat[, cov]) * 0.95) {
+# 				sv <- sv+1
+# 				adj_r2 <- temp_dat[sv, cov]
+# 			}
+# 		}
+# 		temp_res[j-1, "sv"] <- sv
+# 		temp_res[j-1, "adj_r2"] <- adj_r2
+# 		temp_res[j-1, "trait"] <- i
+# 		temp_res[j-1, "max_sv"] <- "not_max"
+# 		temp_res[j-1, "max_adj_r2"] <- "not_max"
+# 		# add in the max sv and adj_r2
+#  	} 
 
-ggsave("results/sv_r2_plot.pdf", plot = p)
+# temp_res2 <- data.frame(trait = NA, cov = NA, sv = NA, adj_r2 = NA, max_sv = NA, max_adj_r2 = NA)
+#  	for (k in 2:ncol(temp_dat)) {
+#  		cov <- colnames(temp_dat)[k]
+#  		temp_res2[k-1, "cov"] <- cov
+# 		temp_res2[k-1, "adj_r2"] <- max(temp_dat[, cov])
+# 		temp_res2[k-1, "sv"] <- max(as.numeric(temp_dat[["sv"]]))
+# 		temp_res2[k-1, "max_sv"] <- "max"
+# 		temp_res2[k-1, "max_adj_r2"] <- "max"
+# 		temp_res2[k-1, "trait"] <- i
+#  	}
+#  	temp_fin_res <- rbind(temp_res, temp_res2)
+# 	res_list[[i]] <- temp_fin_res
+# }
 
-sim_res <- dplyr::filter(res, data == "simulated")
-real_res <- dplyr::filter(res, data == "real")
+# # make the table and make it look nice
+# res <- do.call(rbind, res_list)
+# rownames(res) <- NULL
+# head(res)
+# res <- res %>%
+# 	mutate(data = ifelse(grepl("^r", trait), "simulated", "real"))
+# 	# gather(key = "max_sv", value = "sv", -trait, -cov, -adj_r2, -max_adj_r2, -data) %>%
+# 	# gather(key = "max_adj_r2", value = "adj_r2", -trait, -cov, -sv, -max_sv, -data)
 
-sum_res <- rbind(
-sim_res %>% dplyr::filter(max_sv == "not_max") %>%
-	group_by(cov) %>%
-	summarise(median_sv_95 = median(as.numeric(sv))) %>%
-	left_join(
-		sim_res %>% dplyr::filter(max_sv == "max") %>%
-		group_by(cov) %>%
-		summarise(median_sv_max = median(as.numeric(sv)))
-		) %>%
-	mutate(data = "simulated")
-,
-real_res %>% dplyr::filter(max_sv == "not_max") %>%
-	group_by(cov) %>%
-	summarise(median_sv_95 = median(as.numeric(sv))) %>%
-	left_join(
-		real_res %>% dplyr::filter(max_sv == "max") %>%
-		group_by(cov) %>%
-		summarise(median_sv_max = median(as.numeric(sv)))
-		) %>%
-	mutate(data = "real")
-)
+# unique(res$trait)
+
+# new_trait_names <- c("time_of_last_meal", "IDLCE_IDLL", "sLDLCE", "hip_cor", "lac", "glc", "neck_angle", "cre", "art_distensibility", "haem")
+# names(new_trait_names) <- unique(res$trait)[12:21] 
+
+# for (i in names(new_trait_names)) {
+# 	res[res$trait == i, "trait"] <- new_trait_names[i]
+# }
+
+# write.table(res, "results/svs_needed.txt", quote = F, col.names = T, row.names = F, sep = "\t")
+
+# p <- ggplot(res, aes(x = cov, y = sv, colour = trait, shape = as.factor(max_sv))) +
+# 	geom_point() +
+# 	geom_jitter() +
+# 	facet_grid(~ data)
+
+# ggsave("results/sv_r2_plot.pdf", plot = p)
+
+# sim_res <- dplyr::filter(res, data == "simulated")
+# real_res <- dplyr::filter(res, data == "real")
+
+# sum_res <- rbind(
+# sim_res %>% dplyr::filter(max_sv == "not_max") %>%
+# 	group_by(cov) %>%
+# 	summarise(median_sv_95 = median(as.numeric(sv))) %>%
+# 	left_join(
+# 		sim_res %>% dplyr::filter(max_sv == "max") %>%
+# 		group_by(cov) %>%
+# 		summarise(median_sv_max = median(as.numeric(sv)))
+# 		) %>%
+# 	mutate(data = "simulated")
+# ,
+# real_res %>% dplyr::filter(max_sv == "not_max") %>%
+# 	group_by(cov) %>%
+# 	summarise(median_sv_95 = median(as.numeric(sv))) %>%
+# 	left_join(
+# 		real_res %>% dplyr::filter(max_sv == "max") %>%
+# 		group_by(cov) %>%
+# 		summarise(median_sv_max = median(as.numeric(sv)))
+# 		) %>%
+# 	mutate(data = "real")
+# )
 

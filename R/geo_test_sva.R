@@ -13,29 +13,6 @@ geo_dat_path <- args[2]
 # geo_dat_path <- "~/ewas_catalog/geo_data/"
 setwd(wd)
 
-# TP <- "FOM"
-
-# #load the samplesheet
-# load(paste0(ms_dir, "samplesheet/data.Robj"))
-# samplesheet <- dplyr::filter(samplesheet, time_point == TP) %>%
-# 	dplyr::filter(is.na(duplicate.rm)) %>%
-# 	mutate(ALN = as.numeric(ALN))
-
-# # sort the covariate date
-# covars <- read_delim(paste0(phen_dir, "FOM/FOM.qcovar"), delim = " ", col_names = F)
-# colnames(covars) <- c("ALN", "Sample_Name", "Bcell", "CD4T", "CD8T", "Gran", "Mono", "NK", "age", paste0("PC", 1:10))
-
-# pheno <- samplesheet %>%
-# 	left_join(covars) %>%
-# 	dplyr::select(one_of(colnames(covars)), BCD_id, BCD_plate, MSA4Plate_id, Slide) %>%
-# 	dplyr::filter(!is.na(PC1))
-
-# #load the methylation data
-# load(paste0(ms_dir, "betas/data.Robj"))
-# meth <- beta[, pheno$Sample_Name] #keep the samples that correspond to the time point you're interested in
-# rm(beta)
-# dim(meth)
-
 # load the potential geo datasets
 # dat_path <- "~/ewas_catalog/geo_data/"
 load(paste0(geo_dat_path, "ewas-cat-cr02.rdata"))
@@ -49,13 +26,6 @@ gses <- geo.data %>%
 # add the 850k dataset
 gses <- rbind(gses, 
 			  data.frame(gse_id = "gse116339", class = NA, nrow = NA, ncol = NA, length = NA))
-
-# now the 850k dataset!
-# x <- load(paste0(dat_path, "gse116339.rda"))
-# meth_850k <- get(x)
-# meth_850k <- meth_850k$data
-# rm(list = x)
-# rm(x)
 
 # function for estimating number of SVs using random matrix theory
 est_nsv <- function(meth, traits, df) {
@@ -130,34 +100,50 @@ write.table(nsv_dat, file = "results/geo_nsv_estimation.txt", quote = F, row.nam
 nsv_dat <- read_delim("results/geo_nsv_estimation.txt", delim = "\t")
 
 # plot nsv_dat stuff
-p <- ggplot(nsv_dat, aes(x = leek, y = rmt)) +
-	geom_point()
+g_nsv_dat <- nsv_dat %>%
+	gather(key = "method", value = "nsv", -gse_id, -n_sample, -n_cpg)
+
+p <- ggplot(g_nsv_dat, aes(x = gse_id, y = nsv, fill = method)) +
+	geom_bar(stat = "identity", position = "dodge") +
+	coord_flip() +
+	theme(axis.text.y = element_blank())
+
 ggsave("results/geo_nsv_estimation_plot.pdf", plot = p)
 
-
 # testing the SVs! 
-gse_id <- gses$gse_id[1]
+gse_id <- "gse110607"
 geo_ncpg_dat <- lapply(gses$gse_id, function(gse_id) {
+	print(gse_id)
+	# load the data
 	nam <- paste0("data/geo_data/", gse_id, "_sv_list.RData")
 	ifelse(file.exists(nam), load(nam), return(NULL))
-	if (is.na(sv_list)) return(NULL)
+	if (all(is.na(sv_list))) return(NULL)
+	# make table
 	ncpg_dat <- as.data.frame(matrix(NA, nrow = length(sv_list), ncol = 21))
 	colnames(ncpg_dat)[1] <- "n_cpg"
 	colnames(ncpg_dat)[2:21] <- paste0("sv", 1:20, "_adjr2")
 
+	# setting ncpg
 	if (nrow(ncpg_dat) == 16) {
-		# n_cpg <- c(seq(20000, 300000, 20000), nsv_dat[nsv_dat$gse_id == gse_id, "n_cpg"])
-		n_cpg <- c(seq(20000, 300000, 20000), 480000)
+		n_cpg <- c(seq(20000, 300000, 20000), nsv_dat[nsv_dat$gse_id == gse_id, "n_cpg", drop = T])
+		# n_cpg <- c(seq(20000, 300000, 20000), 480000)
 	} else {
 		n_cpg <- c(seq(20000, 700000, 20000), nsv_dat[nsv_dat$gse_id == gse_id, "n_cpg"])
 	}
 
+	# extract SVs from all CpG sites
 	svs <- sv_list[[length(sv_list)]]$sv
 
+	# Assess variance of SVs, taken above, explained by SVs produced from subsets of CpG sites
 	for (i in seq_along(sv_list)) {
-		temp_svs <- sv_list[[i]]$sv
 		ncpg <- n_cpg[i]
 		ncpg_dat[i, "n_cpg"] <- ncpg
+		if (is.na(sv_list[[i]])) {
+			ncpg_dat[i, 2:nrow(ncpg_dat)] <- NA
+			next
+		} else {
+			temp_svs <- sv_list[[i]]$sv
+		}
 		fom <- as.formula(paste0("svs[, j] ~ ", paste(paste0("temp_svs[, ", 1:20, "]"), collapse = " + ")))
 		for (j in 1:ncol(temp_svs)) {
 			fit <- lm(fom)
@@ -176,21 +162,40 @@ g_dat <- fin_dat %>%
 g_dat$sv <- gsub("sv", "", g_dat$sv)
 g_dat$sv <- gsub("_adjr2", "", g_dat$sv)
 
-p <- lapply(unique(g_dat$sv), function(sv_n) {
-	dat <- dplyr::filter(g_dat, sv == sv_n)
-	p <- ggplot(dat, aes(x = as.factor(n_cpg), y = adj_r2)) +
+# split data into epic and non-epic arrays
+g_dat_epic <- g_dat %>%
+	dplyr::filter(gse_id == "gse116339")
+g_dat <- g_dat %>%
+	dplyr::filter(gse_id != "gse116339")
+### issue with n_cpg factors!!!!
+plot_dat <- function(dat, sv_n) {
+	pdat <- dplyr::filter(dat, sv == sv_n) %>%
+		dplyr::filter(n_cpg <= 3e5)
+	p <- ggplot(pdat, aes(x = as.factor(n_cpg), y = adj_r2)) +
 		geom_boxplot() +
+		geom_point(aes(colour = gse_id)) +
+		geom_jitter() +
+		theme(legend.position = "none") +
 		ggtitle(sv_n)
 	return(p)
+}
+
+p <- lapply(unique(g_dat$sv), function(sv_n) {
+	x <- plot_dat(g_dat, sv_n)
+	return(x)
 })
 ggsave("results/geo_ncpg_plot.pdf", plot = marrangeGrob(p, nrow=1, ncol=1))
 
-g_dat <- lapply(fin_dat, function(x) {
-	dat <- x %>%
-		gather("sv", "adj_r2", -n_cpg)
-})
+p_epic <- ggplot(g_dat_epic, aes(x = n_cpg, y = adj_r2,
+								 colour = reorder(sv, sort(as.numeric(sv))), group = sv)) +
+	geom_point() +
+	geom_line() +
+	scale_colour_discrete(name = "SV")
 
-save(geo_ncpg_dat, file = "results/geo_ncpg_dat.txt")
+ggsave("results/geo_epic_ncpg_plot.pdf", plot = p_epic)
+
+
+save(geo_ncpg_dat, file = "results/geo_ncpg_dat.RData")
 
 
 
