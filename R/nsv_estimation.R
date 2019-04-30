@@ -244,9 +244,9 @@ sva_res_list <- lapply(traits, function(trait) {
 		na.omit()
 
 	x <- lapply(models, function(model) {
-		svs <- sva_list[[1]][[model]]$sv
-		# svs <- sva_list[[trait]][[model]]$sv
-		if (is.null(svs)) next
+		# svs <- sva_list[[1]][[model]]$sv
+		svs <- sva_list[[trait]][[model]]$sv
+		if (is.null(svs)) return(NULL)
 
 		sva_temp <- as.data.frame(matrix(NA, nrow = length(covs), ncol = ncol(svs) + 1))
 		colnames(sva_temp) <- c("covariate", paste0("sv", 1:ncol(svs)))
